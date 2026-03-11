@@ -1,6 +1,7 @@
 import random
 import logging
 import os
+import asyncio
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -11,12 +12,22 @@ class SatelliteService:
         self.gee_available = False
         try:
             import ee
-            # Try to authenticate with Earth Engine
-            # In production, use service account credentials
+            
+            # GEE Authentication configuration
+            service_account = os.getenv("GEE_SERVICE_ACCOUNT")
+            private_key_path = os.getenv("GEE_PRIVATE_KEY_PATH")
+            project_id = os.getenv("GEE_PROJECT_ID", "irrigation-ai")
+
             try:
-                ee.Initialize()
+                if service_account and private_key_path and os.path.exists(private_key_path):
+                    credentials = ee.ServiceAccountCredentials(service_account, private_key_path)
+                    ee.Initialize(credentials, project=project_id)
+                    logger.info(f"GEE initialized with Service Account: {service_account}")
+                else:
+                    ee.Initialize(project=project_id)
+                    logger.info("GEE initialized with local credentials")
+                
                 self.gee_available = True
-                logger.info("Google Earth Engine initialized successfully")
             except Exception as e:
                 logger.warning(f"Could not initialize Earth Engine: {e}. Using simulated data.")
                 self.gee_available = False
@@ -25,32 +36,17 @@ class SatelliteService:
             self.gee_available = False
     
     async def get_ndvi(self, lat: float, lon: float, days_back: int = 30):
-        """
-        Fetches NDVI (Normalized Difference Vegetation Index) for a given location.
-        
-        Args:
-            lat: Latitude of the field
-            lon: Longitude of the field
-            days_back: Number of days to look back for satellite imagery
-            
-        Returns:
-            Dictionary with NDVI value, health status, and metadata
-        """
+        """Fetch NDVI analysis for specific coordinates"""
         if self.gee_available:
-            return await self._get_ndvi_from_gee(lat, lon, days_back)
+            return await asyncio.get_event_loop().run_in_executor(None, self._sync_get_ndvi, lat, lon, days_back)
         else:
             return self._get_simulated_ndvi(lat, lon)
-    
-    async def _get_ndvi_from_gee(self, lat: float, lon: float, days_back: int):
-        """Fetch NDVI from Google Earth Engine using Sentinel-2 data"""
+
+    def _sync_get_ndvi(self, lat: float, lon: float, days_back: int):
+        """Sync NDVI fetch from Google Earth Engine"""
         try:
             import ee
-            
-            # Create a point geometry for the field
             point = ee.Geometry.Point([lon, lat])
-            
-            # Get Sentinel-2 imagery
-            # Filter by date and cloud cover
             end_date = datetime.now()
             start_date = end_date - timedelta(days=days_back)
             
@@ -61,23 +57,14 @@ class SatelliteService:
                         .sort('system:time_start', False))
             
             if sentinel2.size().getInfo() == 0:
-                logger.warning(f"No cloud-free Sentinel-2 images found for {lat}, {lon}")
                 return self._get_simulated_ndvi(lat, lon)
             
-            # Get the most recent image
             latest_image = sentinel2.first()
-            
-            # Calculate NDVI = (NIR - Red) / (NIR + Red)
-            # Sentinel-2 bands: B4=Red, B8=NIR
+            # NDVI = (B8 - B4) / (B8 + B4)
             ndvi = latest_image.normalizedDifference(['B8', 'B4']).rename('NDVI')
-            
-            # Get NDVI value at the point
             ndvi_value = ndvi.sample(point, 30).first().get('NDVI').getInfo()
-            
-            # Get image date
             image_date = ee.Date(latest_image.get('system:time_start')).format('YYYY-MM-dd').getInfo()
             
-            # Interpret NDVI
             health_status, stress_alert = self._interpret_ndvi(ndvi_value)
             
             return {
@@ -87,84 +74,170 @@ class SatelliteService:
                 "image_date": image_date,
                 "source": "Sentinel-2"
             }
-            
         except Exception as e:
             logger.error(f"Error fetching NDVI from GEE: {e}")
             return self._get_simulated_ndvi(lat, lon)
-    
-    def _get_simulated_ndvi(self, lat: float, lon: float):
-        """Generate simulated NDVI data for demonstration"""
-        # Simulate realistic NDVI values based on location
-        # Add some variation based on coordinates for consistency
+
+    async def get_satellite_image(self, lat: float, lon: float, days_back: int = 60):
+        """Returns True Color, False Color, and NDVI thumbnail URLs"""
+        if self.gee_available:
+            return await asyncio.get_event_loop().run_in_executor(
+                None, self._sync_get_satellite_image, lat, lon, days_back
+            )
+        else:
+            return self._get_simulated_image(lat, lon)
+
+    def _sync_get_satellite_image(self, lat: float, lon: float, days_back: int):
+        try:
+            import ee
+            point = ee.Geometry.Point([lon, lat])
+            region = point.buffer(1000).bounds() # 1km radius
+
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+
+            collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+                         .filterBounds(region)
+                         .filterDate(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+                         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 15))
+                         .sort('system:time_start', False))
+
+            if collection.size().getInfo() == 0:
+                return self._get_simulated_image(lat, lon)
+
+            latest = collection.first()
+            image_date = ee.Date(latest.get('system:time_start')).format('YYYY-MM-dd').getInfo()
+
+            # RGB URL
+            rgb_url = latest.getThumbURL({
+                'bands': ['B4', 'B3', 'B2'],
+                'min': 0, 'max': 3000, 'gamma': 1.4,
+                'region': region, 'dimensions': 512, 'format': 'png'
+            })
+
+            # False Color URL
+            fc_url = latest.getThumbURL({
+                'bands': ['B8', 'B4', 'B3'],
+                'min': 0, 'max': 3000, 'gamma': 1.4,
+                'region': region, 'dimensions': 512, 'format': 'png'
+            })
+
+            # NDVI URL with Palette
+            ndvi_image = latest.normalizedDifference(['B8', 'B4'])
+            ndvi_url = ndvi_image.getThumbURL({
+                'min': 0, 'max': 1,
+                'palette': ['#ff0000', '#ffff00', '#00ff00'], # Red, Yellow, Green as requested
+                'region': region, 'dimensions': 512, 'format': 'png'
+            })
+            
+            # Latest point value
+            ndvi_value = ndvi_image.sample(point, 30).first().get('nd').getInfo()
+            health_status, stress_alert = self._interpret_ndvi(ndvi_value)
+
+            return {
+                "rgb_image_url": rgb_url,
+                "false_color_url": fc_url,
+                "ndvi_image_url": ndvi_url,
+                "ndvi_value": round(float(ndvi_value), 3),
+                "health_status": health_status,
+                "stress_alert": stress_alert,
+                "image_date": image_date,
+                "lat": lat, "lon": lon,
+                "source": "Sentinel-2 (Live)"
+            }
+        except Exception as e:
+            logger.error(f"Error fetching images from GEE: {e}")
+            return self._get_simulated_image(lat, lon)
+
+    def _interpret_ndvi(self, ndvi: float):
+        """Requested classifications:
+        NDVI > 0.6 -> Healthy vegetation
+        NDVI 0.3-0.6 -> Moderate growth
+        NDVI < 0.3 -> Crop stress
+        """
+        if ndvi > 0.6:
+            return "Healthy vegetation", False
+        elif ndvi >= 0.3:
+            return "Moderate growth", False
+        else:
+            return "Crop stress", True
+
+    def _get_simulated_image(self, lat: float, lon: float):
+        import math
+        # Calculate Tile Coordinates for a realistic zoom level (17)
+        zoom = 17
+        lat_rad = math.radians(lat)
+        n = 2.0 ** zoom
+        xtile = int((lon + 180.0) / 360.0 * n)
+        ytile = int((1.0 - math.log(math.tan(lat_rad) + (1.0 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
+        
+        # Using Google Hybrid/Satellite tiles for a "live" look in simulation
+        # lyrs=s: Satellite, lyrs=y: Hybrid
+        tile_url = f"https://mt1.google.com/vt/lyrs=y&x={xtile}&y={ytile}&z={zoom}"
+        
         random.seed(int(lat * 1000 + lon * 1000))
-        ndvi = round(random.uniform(0.3, 0.85), 3)
+        ndvi = round(random.uniform(0.2, 0.8), 3)
+        status, alert = self._interpret_ndvi(ndvi)
         
-        health_status, stress_alert = self._interpret_ndvi(ndvi)
-        
+        return {
+            "rgb_image_url": tile_url,
+            "false_color_url": tile_url, # Fallback to real tile
+            "ndvi_image_url": "https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&w=800&q=80", # Farm placeholder
+            "ndvi_value": ndvi,
+            "health_status": status,
+            "stress_alert": alert,
+            "image_date": datetime.now().strftime('%Y-%m-%d'),
+            "lat": lat, "lon": lon,
+            "source": "Simulated (Location Sync)"
+        }
+
+    def _get_simulated_ndvi(self, lat: float, lon: float):
+        random.seed(int(lat * 1000 + lon * 1000))
+        ndvi = round(random.uniform(0.2, 0.8), 3)
+        status, alert = self._interpret_ndvi(ndvi)
         return {
             "ndvi_value": ndvi,
-            "health_status": health_status,
-            "stress_alert": stress_alert,
-            "image_date": (datetime.now() - timedelta(days=random.randint(1, 5))).strftime('%Y-%m-%d'),
+            "health_status": status,
+            "stress_alert": alert,
+            "image_date": datetime.now().strftime('%Y-%m-%d'),
             "source": "Simulated"
         }
-    
-    def _interpret_ndvi(self, ndvi_value: float):
-        """Interpret NDVI value to health status"""
-        if ndvi_value < 0.2:
-            return "Poor vegetation", True
-        elif ndvi_value < 0.4:
-            return "Poor vegetation", True
-        elif ndvi_value < 0.6:
-            return "Moderate vegetation", False
-        elif ndvi_value < 0.8:
-            return "Healthy vegetation", False
-        else:
-            return "Very healthy vegetation", False
-    
+
     async def get_crop_health_trend(self, field_id: int, db_session):
-        """Get NDVI trend over time for a field"""
         from ..models.database import SatelliteData
+        records = (db_session.query(SatelliteData)
+                  .filter(SatelliteData.field_id == field_id)
+                  .order_by(SatelliteData.timestamp.asc())
+                  .limit(12)
+                  .all())
         
-        # Get last 10 satellite data points
-        satellite_records = (db_session.query(SatelliteData)
-                            .filter(SatelliteData.field_id == field_id)
-                            .order_by(SatelliteData.timestamp.desc())
-                            .limit(10)
-                            .all())
-        
-        if not satellite_records:
+        if not records:
             return {"trend": "No data", "records": []}
-        
-        records = [
+            
+        history = [
             {
-                "ndvi": record.ndvi_value,
-                "health": record.health_status,
-                "date": record.image_date.isoformat() if record.image_date else record.timestamp.isoformat(),
-                "timestamp": record.timestamp.isoformat()
+                "week": f"Week {i+1}",
+                "ndvi": r.ndvi_value,
+                "status": r.health_status,
+                "date": r.image_date.strftime('%Y-%m-%d') if r.image_date else r.timestamp.strftime('%Y-%m-%d')
             }
-            for record in reversed(satellite_records)
+            for i, r in enumerate(records)
         ]
         
-        # Determine trend
+        # Water Stress Detection (Logic #4)
+        stress_detected = False
         if len(records) >= 2:
-            latest_ndvi = records[-1]["ndvi"]
-            previous_ndvi = records[-2]["ndvi"]
-            
-            if latest_ndvi > previous_ndvi + 0.05:
-                trend = "Improving"
-            elif latest_ndvi < previous_ndvi - 0.05:
-                trend = "Declining"
-            else:
-                trend = "Stable"
-        else:
-            trend = "Insufficient data"
+            last = records[-1].ndvi_value
+            prev = records[-2].ndvi_value
+            # If NDVI drops significantly (>0.15) mark as water stress
+            if last < prev - 0.15:
+                stress_detected = True
         
         return {
-            "trend": trend,
-            "records": records,
-            "latest_ndvi": records[-1]["ndvi"] if records else None,
-            "latest_health": records[-1]["health"] if records else None
+            "latest_ndvi": records[-1].ndvi_value,
+            "latest_status": records[-1].health_status,
+            "stress_detected": stress_detected,
+            "records": history
         }
 
 satellite_service = SatelliteService()

@@ -1,11 +1,17 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 from .api import farmers, sensors, dashboard, voice, satellite
 from .db.session import init_db
 
 app = FastAPI(title="AI Precision Irrigation Assistant API")
 
-# CORS - must be added FIRST, before anything else
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,6 +19,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Serve static files
+os.makedirs("static/uploads", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Initialize database
 init_db()

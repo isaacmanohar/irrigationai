@@ -17,9 +17,13 @@ class Farmer(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     preferred_language = Column(String, default="English")
+    profile_photo = Column(String, nullable=True)
+    password_changed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     fields = relationship("Field", back_populates="owner")
+    devices = relationship("Device", back_populates="owner")
+    settings = relationship("UserSettings", back_populates="owner", uselist=False)
 
 class Field(Base):
     __tablename__ = "fields"
@@ -30,7 +34,9 @@ class Field(Base):
     field_area = Column(Float) # in hectares
     growth_stage = Column(String)
     season = Column(String)
-    irrigation_mode = Column(String, default="Pump") # Pump or Canal
+    irrigation_method = Column(String, default="Drip") # Drip, Sprinkler, Flood
+    planting_date = Column(DateTime, nullable=True)
+    farm_name = Column(String, nullable=True)
     optimal_moisture_level = Column(Float, default=40.0)
     
     owner = relationship("Farmer", back_populates="fields")
@@ -75,3 +81,35 @@ class SatelliteData(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow) # When data was fetched
     
     field = relationship("Field", back_populates="satellite_data")
+
+class Device(Base):
+    __tablename__ = "devices"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("farmers.id"))
+    device_id = Column(String, unique=True, index=True) # e.g. ESP32-MAC
+    device_type = Column(String, default="ESP32")
+    status = Column(String, default="Offline") # Online, Offline
+    last_sync = Column(DateTime, nullable=True)
+    health_score = Column(Integer, default=100)
+    
+    owner = relationship("Farmer", back_populates="devices")
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("farmers.id"))
+    
+    # Notifications
+    sms_alerts = Column(Boolean, default=True)
+    voice_alerts = Column(Boolean, default=True)
+    dashboard_notifications = Column(Boolean, default=True)
+    
+    # Irrigation Control
+    auto_irrigation = Column(Boolean, default=False)
+    soil_moisture_threshold = Column(Float, default=30.0)
+    max_irrigation_duration = Column(Integer, default=30) # minutes
+    water_usage_limit = Column(Integer, default=500) # liters per day
+    
+    owner = relationship("Farmer", back_populates="settings")

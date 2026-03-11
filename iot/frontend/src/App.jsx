@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Droplets, Thermometer, Wind, Activity,
   MapPin, Calendar, Power, AlertTriangle,
-  ChevronRight, TrendingUp, History, User, Phone, LogOut,
+  ChevronRight, TrendingUp, History, User, Phone, LogOut, Loader2,
   Sun, Sunrise, CloudRain, Settings, X, Home, Cloud, Sprout, CalendarDays, Satellite, Languages
 } from 'lucide-react';
 import {
@@ -16,6 +16,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Login from './components/Login';
 import Register from './components/Register';
+import LandingPage from './components/LandingPage';
+import ProfileSettings from './components/ProfileSettings';
+import { TooltipProvider } from './components/ui/tooltip';
+import { Toaster } from 'sonner';
 
 // Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,8 +29,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+const API_BASE = window.location.hostname.includes('ngrok') || window.location.port !== '5173'
+  ? `${window.location.protocol}//${window.location.host}/api/v1`
+  : `http://${window.location.hostname}:8000/api/v1`;
 window.API_BASE = API_BASE;
+console.log("Using API_BASE:", API_BASE);
 
 const translations = {
   English: {
@@ -61,7 +68,8 @@ const translations = {
     aiInsights: "AI Insights",
     ndviInterpretation: "NDVI Interpretation",
     logout: "Logout",
-    call: "Call"
+    call: "Call",
+    settings: "Settings"
   },
   Hindi: {
     home: "होम",
@@ -95,7 +103,8 @@ const translations = {
     aiInsights: "AI अंतर्दृष्टि",
     ndviInterpretation: "NDVI व्याख्या",
     logout: "लॉगआउट",
-    call: "कॉल करें"
+    call: "कॉल करें",
+    settings: "सेटिंग्स"
   },
   Telugu: {
     home: "హోమ్",
@@ -129,7 +138,8 @@ const translations = {
     aiInsights: "AI అంతర్దృష్టులు",
     ndviInterpretation: "NDVI వివరణ",
     logout: "లాగ్ అవుట్",
-    call: "కాల్ చేయండి"
+    call: "కాల్ చేయండి",
+    settings: "సెట్టింగ్‌లు"
   },
   Tamil: {
     home: "முகப்பு",
@@ -203,22 +213,28 @@ const translations = {
 
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [view, setView] = useState('login');
+  const [view, setView] = useState('landing');
   const [activeTab, setActiveTab] = useState('home');
   const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
   const [pumpOn, setPumpOn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [calling, setCalling] = useState(false);
+  const [profile, setProfile] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editForm, setEditForm] = useState({ village: '', crop_type: '' });
   const [savingStatus, setSavingStatus] = useState(false);
   const [satelliteData, setSatelliteData] = useState(null);
   const [satelliteInsights, setSatelliteInsights] = useState(null);
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'English');
+  const [ndviTrend, setNdviTrend] = useState([]);
+  const [healthMapUrls, setHealthMapUrls] = useState(null);
+  const [satelliteAlert, setSatelliteAlert] = useState(null);
+  const [satMode, setSatMode] = useState('ndvi'); // 'ndvi' or 'rgb'
 
   const t = (key) => {
-    return translations[currentLang][key] || key;
+    const lang = translations[currentLang] || translations['English'];
+    return lang[key] || key;
   };
 
   const changeLanguage = (lang) => {
@@ -235,61 +251,96 @@ const App = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
-    setView('login');
+    setView('landing');
+  };
+
+  const getUserId = () => {
+    try {
+      if (!token || typeof token !== 'string') return 1;
+      const parts = token.split('.');
+      if (parts.length < 2) return 1;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.sub || 1;
+    } catch (e) {
+      console.error("Token parsing error:", e);
+      return 1;
+    }
   };
 
   useEffect(() => {
     if (!token) return;
 
-    const getUserId = () => {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.sub || 1;
-      } catch (e) {
-        return 1;
-      }
-    };
-
     const userId = getUserId();
 
     const fetchData = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/dashboard/status/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setData(res.data);
-        const histRes = await axios.get(`${API_BASE}/dashboard/history/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setHistory(histRes.data.map(h => ({
-          time: new Date(h.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          moisture: 40,
-          water: h.water_used,
-          date: new Date(h.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        })));
+        const headers = { headers: { Authorization: `Bearer ${token}` } };
 
-        // Fetch satellite data
+        const handleAuthError = (err) => {
+          if (err.response?.status === 401) {
+            console.error("Session expired. Logging out...");
+            handleLogout();
+          }
+          return err;
+        };
+
+        let userIdToUse = userId;
         try {
-          const satRes = await axios.get(`${API_BASE}/satellite/ndvi/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setSatelliteData(satRes.data);
+          const profRes = await axios.get(`${API_BASE}/farmers/full-profile`, headers);
+          setProfile(profRes.data);
+          userIdToUse = profRes.data.farm?.id || userId;
         } catch (err) {
-          console.log('Satellite data not available');
+          handleAuthError(err);
         }
 
-        // Fetch satellite insights
-        try {
-          const insRes = await axios.get(`${API_BASE}/dashboard/satellite-insights/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
+        axios.get(`${API_BASE}/dashboard/status/${userIdToUse}`, headers)
+          .then(res => setData(res.data))
+          .catch(handleAuthError);
+
+        axios.get(`${API_BASE}/dashboard/history/${userIdToUse}`, headers)
+          .then(histRes => {
+            if (Array.isArray(histRes.data)) {
+              setHistory(histRes.data.map(h => ({
+                time: h.start_time ? new Date(h.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--',
+                moisture: 40,
+                water: h.water_used || 0,
+                date: h.start_time ? new Date(h.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---'
+              })));
+            }
+          }).catch(handleAuthError);
+
+        axios.get(`${API_BASE}/satellite/ndvi`, headers)
+          .then(res => setSatelliteData(res.data))
+          .catch(handleAuthError);
+
+        axios.get(`${API_BASE}/satellite/health-map`, headers)
+          .then(res => setHealthMapUrls(res.data))
+          .catch(err => {
+            if (err.response?.status !== 401) setHealthMapUrls('error');
+            handleAuthError(err);
           });
-          setSatelliteInsights(insRes.data);
-        } catch (err) {
-          console.log('Satellite insights not available');
-        }
+
+        axios.get(`${API_BASE}/satellite/ndvi-trend`, headers)
+          .then(res => {
+            setNdviTrend(res.data.trend || []);
+            setSatelliteAlert(res.data.alert);
+          })
+          .catch(handleAuthError);
+
       } catch (err) {
-        setData(mockData);
-        setHistory(mockHistory);
+        console.error("Global Fetch Error:", err);
+        if (!data) setData(mockData);
+        if (!history.length) setHistory(mockHistory);
+        // Provide mock satellite data if fetch fails
+        if (!satelliteData) setSatelliteData({
+          ndvi_value: 0.65,
+          status: "Healthy (Demo)",
+          image_date: new Date().toISOString().split('T')[0]
+        });
+        if (!healthMapUrls) setHealthMapUrls({
+          ndvi_viz_url: "https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&w=800&q=80",
+          true_color_url: "https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&w=800&q=80"
+        });
       } finally {
         setLoading(false);
       }
@@ -305,6 +356,7 @@ const App = () => {
     farmer_village: "Rampur",
     latitude: 17.3850,
     longitude: 78.4867,
+    profile_photo: null,
     field_info: { id: 1, crop: "Rice", area: 2.5, stage: "Vegetative" },
     sensor_data: { soil_moisture: 42, temperature: 31, humidity: 65, flow_rate: 12.5 },
     ndvi: { ndvi_value: 0.72, interpretation: "Healthy crops", stress_alert: false },
@@ -349,17 +401,40 @@ const App = () => {
 
   if (!token) {
     return (
-      <AnimatePresence mode='wait'>
-        {view === 'login' ? (
-          <Login key="login" onLogin={handleLogin} onSwitchToRegister={() => setView('register')} />
-        ) : (
-          <Register key="register" onRegister={handleLogin} onSwitchToLogin={() => setView('login')} />
-        )}
-      </AnimatePresence>
+      <TooltipProvider>
+        <AnimatePresence mode='wait'>
+          {view === 'landing' && (
+            <LandingPage
+              key="landing"
+              onLogin={() => setView('login')}
+              onGetStarted={() => setView('register')}
+            />
+          )}
+          {view === 'login' && (
+            <Login key="login" onLogin={handleLogin} onSwitchToRegister={() => setView('register')} />
+          )}
+          {view === 'register' && (
+            <Register key="register" onRegister={handleLogin} onSwitchToLogin={() => setView('login')} />
+          )}
+        </AnimatePresence>
+      </TooltipProvider>
     );
   }
 
-  const currentStatus = data || mockData;
+  const currentStatus = {
+    ...mockData,
+    ...(data || {}),
+    farmer_name: profile?.profile?.name || data?.farmer_name || mockData.farmer_name,
+    farmer_village: profile?.farm?.village || data?.farmer_village || mockData.farmer_village,
+    profile_photo: profile?.profile?.profile_photo || null,
+  };
+
+  const SERVER_URL = API_BASE.replace('/api/v1', '');
+  const getProfilePhotoUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${SERVER_URL}${path}`;
+  };
 
   // Calculate next irrigation time dynamically
   const getNextIrrigation = () => {
@@ -416,744 +491,515 @@ const App = () => {
   };
 
   const renderHome = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
+    <div className="space-y-10">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="mb-8"
       >
-        {t('home')}
-      </motion.h2>
-      <p className="page-subtitle">Monitor your farm at a glance</p>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('home')}</h2>
+        <p className="text-muted-foreground font-medium">Monitoring your farm's vital signs in real-time</p>
+      </motion.div>
 
-      <div className="stats-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        {[
+          { icon: Droplets, label: t('soilMoisture'), value: `${currentStatus.sensor_data?.soil_moisture || 42}%`, status: 'Optimal', color: 'text-primary', bg: 'bg-primary/10', delay: 0.1 },
+          { icon: Thermometer, label: t('temperature'), value: `${currentStatus.sensor_data?.temperature || 31}°C`, status: 'Warm', color: 'text-orange-500', bg: 'bg-orange-500/10', delay: 0.2 },
+          { icon: Power, label: t('pumpStatus'), value: pumpOn ? 'ON' : 'OFF', status: pumpOn ? 'Active' : 'Standby', color: pumpOn ? 'text-green-500' : 'text-red-500', bg: pumpOn ? 'bg-green-500/10' : 'bg-red-500/10', delay: 0.3 },
+          { icon: Satellite, label: 'Sat NDVI', value: satelliteData?.ndvi_value || "0.00", status: satelliteData?.status || "Analyzing", color: satelliteData?.ndvi_value > 0.6 ? 'text-green-500' : 'text-yellow-500', bg: 'bg-indigo-500/10', delay: 0.4 },
+          { icon: Activity, label: t('aiAdvice'), value: currentStatus.ai_insights ? 'Action Recommended' : 'No Action', status: currentStatus.ai_insights ? 'Check Details' : 'System Stable', color: 'text-purple-500', bg: 'bg-purple-500/10', delay: 0.5 },
+        ].map((item, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: item.delay }}
+            className="bg-card border border-border p-5 rounded-3xl relative overflow-hidden group hover:border-primary/20 transition-all hover:shadow-xl hover:shadow-primary/5"
+          >
+            <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+              <item.icon className={`w-6 h-6 ${item.color}`} />
+            </div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{item.label}</div>
+            <div className={`text-2xl font-extrabold mb-3 ${item.color}`}>{item.value}</div>
+            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.bg} ${item.color} border-${item.color}/10`}>
+              {item.status}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Irrigation Control */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card-large"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+          className="bg-card border border-border p-8 rounded-[2rem]"
         >
-          <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-            <Droplets size={24} color="#3b82f6" />
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <Power className="w-5 h-5 text-green-500" />
+            </div>
+            <h3 className="text-lg font-bold">{t('irrigationControl')}</h3>
           </div>
-          <div className="stat-label">{t('soilMoisture')}</div>
-          <div className="stat-value-large">
-            {currentStatus.sensor_data?.soil_moisture || 42}<span className="stat-unit">%</span>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 bg-secondary/30 rounded-3xl">
+            <div className="text-center sm:text-left">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">State</div>
+              <div className={`text-2xl font-black ${pumpOn ? 'text-green-500' : 'text-red-500'}`}>
+                {pumpOn ? 'SYSTEM ACTIVE' : 'SYSTEM STANDBY'}
+              </div>
+            </div>
+            <button
+              className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold transition-all active:scale-95 shadow-xl ${pumpOn ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-green-500 text-white shadow-green-500/20'}`}
+              onClick={() => setPumpOn(!pumpOn)}
+            >
+              {pumpOn ? t('stop') : t('start')}
+            </button>
           </div>
-          <div className="badge badge-success">Good</div>
+        </motion.div>
+
+        {/* Quick Weather */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6 }}
+          className="bg-card border border-border p-8 rounded-[2rem]"
+        >
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <Sun className="w-5 h-5 text-orange-500" />
+            </div>
+            <h3 className="text-lg font-bold">{t('weatherForecast')}</h3>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="text-5xl">☁️</div>
+            <div className="flex-1">
+              <div className="text-3xl font-black">{currentStatus.weather?.temperature || 32}°C</div>
+              <div className="text-muted-foreground font-medium">Partly Cloudy • {currentStatus.farmer_village}</div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+
+  const renderWeather = () => (
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('weatherForecast')}</h2>
+          <p className="text-muted-foreground font-medium">Local conditions and 7-day outlook for {currentStatus.farmer_village}</p>
+        </div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-card border border-border p-10 rounded-[2.5rem] relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
+
+        <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
+          <div className="text-[120px] leading-none animate-float">☁️</div>
+          <div className="flex-1 text-center md:text-left">
+            <div className="text-sm font-bold text-primary uppercase tracking-[0.3em] mb-4">Current Conditions</div>
+            <div className="text-7xl md:text-8xl font-black tracking-tighter mb-4">{currentStatus.weather?.temperature || 32}°C</div>
+            <div className="text-2xl font-bold text-muted-foreground">Partly Cloudy</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+            {[
+              { icon: Droplets, label: 'Humidity', value: '55%', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+              { icon: Wind, label: 'Wind', value: '12 km/h', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+              { icon: CloudRain, label: 'Rain Chance', value: '0%', color: 'text-indigo-400', bg: 'bg-indigo-400/10' },
+              { icon: Sunrise, label: 'Sunrise', value: currentStatus.weather?.sunrise || '06:30', color: 'text-orange-400', bg: 'bg-orange-400/10' },
+            ].map((stat, i) => (
+              <div key={i} className="bg-secondary/30 p-4 rounded-2xl flex flex-col items-center justify-center text-center gap-1 border border-border/50">
+                <stat.icon size={18} className={stat.color} />
+                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">{stat.label}</div>
+                <div className="text-base font-bold">{stat.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="space-y-6">
+        <h3 className="text-lg font-bold tracking-tight uppercase text-muted-foreground tracking-[0.2em]">{t('nextRecommended')} 7 DAYS</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+          {(currentStatus.weather?.forecast || mockData.weather.forecast).map((day, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="bg-card border border-border p-6 rounded-3xl flex flex-col items-center text-center group hover:border-primary/30 transition-all hover:translate-y-[-4px]"
+            >
+              <div className="text-[11px] font-bold text-muted-foreground mb-4 uppercase">
+                {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                <br />
+                <span className="text-foreground">{new Date(day.date).toLocaleDateString('en-US', { day: 'numeric' })}</span>
+              </div>
+              <div className="text-3xl mb-4 group-hover:scale-110 transition-transform">🌤️</div>
+              <div className="space-y-1">
+                <div className="text-lg font-black">{Math.round(day.max_temp)}°</div>
+                <div className="text-xs font-bold text-muted-foreground">{Math.round(day.min_temp)}°</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSoilHealth = () => (
+    <div className="space-y-10">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('soilHealth')}</h2>
+        <p className="text-muted-foreground font-medium">Underground analytics for precision crop nutrition</p>
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { icon: Droplets, label: 'Soil Moisture', value: `${currentStatus.sensor_data?.soil_moisture || 42.0}%`, status: 'Optimal', color: '#3b82f6', fill: 'bg-blue-500' },
+          { icon: Thermometer, label: 'Temperature', value: `${currentStatus.sensor_data?.temperature || 31.0}°C`, status: 'Warm', color: '#f59e0b', fill: 'bg-orange-500' },
+          { icon: Wind, label: 'Humidity', value: '58.0%', status: 'Normal', color: '#10b981', fill: 'bg-green-500' },
+          { icon: Activity, label: 'Water Flow', value: '0.0 L/min', status: 'Stopped', color: '#6b7280', fill: 'bg-slate-500' },
+        ].map((item, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-card border border-border p-6 rounded-3xl"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <item.icon size={20} color={item.color} />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
+            </div>
+            <div className="text-3xl font-black mb-4">{item.value}</div>
+            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden mb-4">
+              <div className={`h-full ${item.fill}`} style={{ width: '60%' }}></div>
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-widest" style={{ color: item.color }}>{item.status}</div>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card border border-border p-8 rounded-[2.5rem]"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Activity className="text-primary" /> Moisture Trend (24h)
+          </h3>
+          <div className="text-xs font-bold text-muted-foreground bg-secondary px-4 py-1.5 rounded-full border border-border">Real-time Feed</div>
+        </div>
+
+        <div className="h-[350px] w-full mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={history}>
+              <defs>
+                <linearGradient id="colorMoisture" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#eab308" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+              <XAxis dataKey="time" stroke="#64748b" fontSize={11} fontWeight="bold" />
+              <YAxis stroke="#64748b" fontSize={11} fontWeight="bold" />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '12px' }}
+                itemStyle={{ color: '#eab308', fontWeight: 'bold' }}
+              />
+              <Area type="monotone" dataKey="moisture" stroke="#eab308" strokeWidth={3} fillOpacity={1} fill="url(#colorMoisture)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  const renderCrops = () => (
+    <div className="space-y-10">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('crops')}</h2>
+        <p className="text-muted-foreground font-medium">Manage and monitor crop development stages</p>
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-card border border-border p-8 rounded-[2rem] flex flex-col items-center text-center col-span-1"
+        >
+          <div className="text-6xl mb-6">🌾</div>
+          <div className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-2">Current Harvest</div>
+          <div className="text-3xl font-black mb-2">{currentStatus.field_info?.crop || "Rice"}</div>
+          <div className="text-muted-foreground font-medium mb-8">Growth Stage: {currentStatus.field_info?.stage || "Vegetative"}</div>
+
+          <button
+            onClick={openSettings}
+            className="w-full py-4 bg-secondary/50 hover:bg-secondary rounded-2xl border border-border transition-all font-bold flex items-center justify-center gap-2 group"
+          >
+            <Settings size={18} className="group-hover:rotate-90 transition-transform" />
+            Modify settings
+          </button>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="stat-card-large"
+          className="bg-card border border-border p-8 rounded-[2rem] col-span-1 md:col-span-2"
         >
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
-            <Thermometer size={24} color="#f59e0b" />
-          </div>
-          <div className="stat-label">{t('temperature')}</div>
-          <div className="stat-value-large">
-            {currentStatus.sensor_data?.temperature || currentStatus.weather?.temperature || 31}<span className="stat-unit">°C</span>
-          </div>
-          <div className="badge badge-warning">Warm</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="stat-card-large"
-        >
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
-            <Power size={24} color="#10b981" />
-          </div>
-          <div className="stat-label">{t('pumpStatus')}</div>
-          <div className="stat-value-large" style={{ color: pumpOn ? '#10b981' : '#ef4444' }}>
-            {pumpOn ? 'ON' : 'OFF'}
-          </div>
-          <div className="badge" style={{ background: pumpOn ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: pumpOn ? '#10b981' : '#ef4444', border: `1px solid ${pumpOn ? '#10b981' : '#ef4444'}` }}>
-            {pumpOn ? 'Active' : 'Standby'}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="stat-card-large"
-        >
-          <div className="stat-icon" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
-            <Activity size={24} color="#8b5cf6" />
-          </div>
-          <div className="stat-label">{t('aiAdvice')}</div>
-          <div className="stat-value-large" style={{ fontSize: '1.75rem' }}>Medium</div>
-          <div className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid #f59e0b' }}>Plan soon</div>
-        </motion.div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <Power size={20} color="#10b981" /> {t('irrigationControl')}
-        </h3>
-        <div className="irrigation-control">
-          <div className="pump-status-display">
-            <div className="pump-label">Pump Status</div>
-            <div className="pump-status-value" style={{ color: pumpOn ? '#10b981' : '#ef4444' }}>
-              {pumpOn ? 'ON' : 'OFF'}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <MapPin size={20} className="text-blue-500" />
             </div>
+            <h3 className="text-lg font-bold">Field Profile</h3>
           </div>
-          <button className={`pump-button ${pumpOn ? 'pump-on' : 'pump-off'}`} onClick={() => setPumpOn(!pumpOn)}>
-            {pumpOn ? t('stop') : t('start')}
-          </button>
-        </div>
-      </motion.div>
 
-      <div className="two-column-grid">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="section-card"
-        >
-          <h3 className="section-title">
-            <Droplets size={20} color="#10b981" /> Soil Health
-          </h3>
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <div className="metric-header">
-                <Droplets size={18} color="#3b82f6" />
-                <span className="metric-name">Soil Moisture</span>
-              </div>
-              <div className="metric-value-display">{currentStatus.sensor_data?.soil_moisture || 42.0}<span className="metric-unit">%</span></div>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${currentStatus.sensor_data?.soil_moisture || 42}%`, background: '#10b981' }}></div>
-              </div>
-              <div className="metric-status" style={{ color: '#10b981' }}>Optimal</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-header">
-                <Thermometer size={18} color="#f59e0b" />
-                <span className="metric-name">Air Temperature</span>
-              </div>
-              <div className="metric-value-display">{currentStatus.sensor_data?.temperature || 31.0}<span className="metric-unit">°C</span></div>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: '75%', background: '#f59e0b' }}></div>
-              </div>
-              <div className="metric-status" style={{ color: '#f59e0b' }}>Warm</div>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="section-card"
-        >
-          <h3 className="section-title">
-            <Sun size={20} color="#f59e0b" /> Weather Forecast
-          </h3>
-          <div className="weather-today-compact">
-            <div className="weather-icon-compact">☁️</div>
-            <div className="weather-info-compact">
-              <div className="weather-label-compact">Today</div>
-              <div className="weather-temp-compact">{currentStatus.weather?.temperature || 32}°C</div>
-              <div className="weather-desc-compact">Partly Cloudy</div>
-            </div>
-            <div className="weather-stats-compact">
-              <div className="weather-stat-item">
-                <Droplets size={16} color="#3b82f6" />
-                <span>Humidity: 55%</span>
-              </div>
-              <div className="weather-stat-item">
-                <Wind size={16} color="#6b7280" />
-                <span>Wind: 12 km/h</span>
-              </div>
-              <div className="weather-stat-item">
-                <CloudRain size={16} color="#3b82f6" />
-                <span>Rain chance: %</span>
-              </div>
-            </div>
-          </div>
-          <div className="next-days-label">NEXT 3 DAYS</div>
-          <div className="forecast-mini-grid">
-            {(currentStatus.weather?.forecast || mockData.weather.forecast).slice(0, 3).map((day, idx) => (
-              <div key={idx} className="forecast-mini-card">
-                <div className="forecast-mini-date">{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                <div className="forecast-mini-temps">
-                  <span className="temp-high">{Math.round(day.max_temp)}°</span>
-                  <span className="temp-low">{Math.round(day.min_temp)}°</span>
-                </div>
+          <div className="grid grid-cols-2 gap-8">
+            {[
+              { label: 'Village', value: currentStatus.farmer_village || "Rampur" },
+              { label: 'Field Area', value: `${currentStatus.field_info?.area || 2.5} Hectares` },
+              { label: 'Crop Variety', value: 'Traditional Long Grain' },
+              { label: 'Soil Type', value: 'Alluvial Loam' },
+            ].map((field, i) => (
+              <div key={i} className="space-y-1">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{field.label}</div>
+                <div className="text-lg font-bold">{field.value}</div>
               </div>
             ))}
           </div>
         </motion.div>
       </div>
-    </>
-  );
-
-  const renderWeather = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
-      >
-        Weather Forecast
-      </motion.h2>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="section-card"
-      >
-        <div className="weather-today-large">
-          <div className="weather-icon-large">☁️</div>
-          <div className="weather-info-large">
-            <div className="weather-label">Today</div>
-            <div className="weather-temp-large">{currentStatus.weather?.temperature || 32}°C</div>
-            <div className="weather-desc-large">Partly Cloudy</div>
-          </div>
-        </div>
-        <div className="weather-details-grid">
-          <div className="weather-detail-card">
-            <Droplets size={28} color="#3b82f6" />
-            <div className="detail-label">Humidity</div>
-            <div className="detail-value">55%</div>
-          </div>
-          <div className="weather-detail-card">
-            <Wind size={28} color="#6b7280" />
-            <div className="detail-label">Wind</div>
-            <div className="detail-value">12 km/h</div>
-          </div>
-          <div className="weather-detail-card">
-            <CloudRain size={28} color="#3b82f6" />
-            <div className="detail-label">Rain Chance</div>
-            <div className="detail-value">%</div>
-          </div>
-          <div className="weather-detail-card">
-            <Sunrise size={28} color="#f59e0b" />
-            <div className="detail-label">Sunrise</div>
-            <div className="detail-value">{currentStatus.weather?.sunrise || "06:30"}</div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.h3
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="section-subtitle"
-      >
-        NEXT 7 DAYS
-      </motion.h3>
-      <div className="forecast-grid-large">
-        {(currentStatus.weather?.forecast || mockData.weather.forecast).map((day, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + idx * 0.1 }}
-            className="forecast-card"
-          >
-            <div className="forecast-date-large">{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-            <div className="forecast-icon">🌤️</div>
-            <div className="forecast-temps-large">
-              <span className="temp-high-large">{Math.round(day.max_temp)}°</span>
-              <span className="temp-low-large">{Math.round(day.min_temp)}°</span>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </>
-  );
-
-  const renderSoilHealth = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
-      >
-        Soil Health
-      </motion.h2>
-      <p className="page-subtitle">Check soil moisture and health metrics</p>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <Droplets size={20} color="#10b981" /> Soil Health
-        </h3>
-        <div className="metrics-grid-large">
-          <div className="metric-card-large">
-            <div className="metric-header">
-              <Droplets size={20} color="#3b82f6" />
-              <span className="metric-name">Soil Moisture</span>
-            </div>
-            <div className="metric-value-display-large">{currentStatus.sensor_data?.soil_moisture || 42.0}<span className="metric-unit">%</span></div>
-            <div className="progress-bar-large">
-              <div className="progress-fill" style={{ width: `${currentStatus.sensor_data?.soil_moisture || 42}%`, background: '#10b981' }}></div>
-            </div>
-            <div className="metric-description">Water content in soil</div>
-            <div className="metric-status-large" style={{ color: '#10b981' }}>Optimal</div>
-          </div>
-
-          <div className="metric-card-large">
-            <div className="metric-header">
-              <Thermometer size={20} color="#f59e0b" />
-              <span className="metric-name">Air Temperature</span>
-            </div>
-            <div className="metric-value-display-large">{currentStatus.sensor_data?.temperature || 31.0}<span className="metric-unit">°C</span></div>
-            <div className="progress-bar-large">
-              <div className="progress-fill" style={{ width: '75%', background: '#f59e0b' }}></div>
-            </div>
-            <div className="metric-description">Ambient temperature</div>
-            <div className="metric-status-large" style={{ color: '#f59e0b' }}>Warm</div>
-          </div>
-
-          <div className="metric-card-large">
-            <div className="metric-header">
-              <Wind size={20} color="#3b82f6" />
-              <span className="metric-name">Humidity</span>
-            </div>
-            <div className="metric-value-display-large">58.0<span className="metric-unit">%</span></div>
-            <div className="progress-bar-large">
-              <div className="progress-fill" style={{ width: '58%', background: '#3b82f6' }}></div>
-            </div>
-            <div className="metric-description">Air moisture level</div>
-            <div className="metric-status-large" style={{ color: '#10b981' }}>Normal</div>
-          </div>
-
-          <div className="metric-card-large">
-            <div className="metric-header">
-              <Activity size={20} color="#6b7280" />
-              <span className="metric-name">Water Flow</span>
-            </div>
-            <div className="metric-value-display-large">0.0<span className="metric-unit">L/min</span></div>
-            <div className="progress-bar-large">
-              <div className="progress-fill" style={{ width: '0%', background: '#6b7280' }}></div>
-            </div>
-            <div className="metric-description">Current water output</div>
-            <div className="metric-status-large" style={{ color: '#6b7280' }}>Stopped</div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <Activity size={20} color="#10b981" /> Moisture Trend
-        </h3>
-        <div style={{ width: '100%', height: '300px' }}>
-          <ResponsiveContainer>
-            <AreaChart data={history}>
-              <defs>
-                <linearGradient id="colorMoisture" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-              <XAxis dataKey="time" stroke="#6b7280" fontSize={14} />
-              <YAxis stroke="#6b7280" fontSize={14} />
-              <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-              <Area type="monotone" dataKey="moisture" stroke="#10b981" fillOpacity={1} fill="url(#colorMoisture)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
-    </>
-  );
-
-  const renderCrops = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
-      >
-        Crops
-      </motion.h2>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="section-card"
-      >
-        <div className="crop-info">
-          <div className="crop-icon">🌾</div>
-          <div>
-            <div className="crop-label">Current Crop</div>
-            <div className="crop-name">{currentStatus.field_info?.crop || "Rice"}</div>
-            <div className="crop-stage">Growth Stage: {currentStatus.field_info?.stage || "Vegetative"}</div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <MapPin size={20} color="#3b82f6" /> Field Information
-        </h3>
-        <div className="field-info-grid">
-          <div className="field-info-item">
-            <div className="field-label">Village</div>
-            <div className="field-value">{currentStatus.farmer_village || "Rampur"}</div>
-          </div>
-          <div className="field-info-item">
-            <div className="field-label">Field Area</div>
-            <div className="field-value">{currentStatus.field_info?.area || 2.5} hectares</div>
-          </div>
-          <div className="field-info-item">
-            <div className="field-label">Crop Type</div>
-            <div className="field-value">{currentStatus.field_info?.crop || "Rice"}</div>
-          </div>
-          <div className="field-info-item">
-            <div className="field-label">Growth Stage</div>
-            <div className="field-value">{currentStatus.field_info?.stage || "Vegetative"}</div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="section-card"
-      >
-        <button onClick={openSettings} className="settings-button">
-          <Settings size={20} />
-          <span>Edit Crop Settings</span>
-        </button>
-      </motion.div>
-    </>
+    </div>
   );
 
   const renderSchedule = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
-      >
-        Schedule
-      </motion.h2>
-      <p className="page-subtitle">View irrigation history and schedules</p>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="recommendation-card"
-      >
-        <h3 className="recommendation-title">
-          <AlertTriangle size={20} color="#10b981" /> Next Recommended Irrigation
-        </h3>
-        <div className="recommendation-grid">
-          <div className="recommendation-item">
-            <Calendar size={24} color="#10b981" />
-            <div>
-              <div className="recommendation-label">When</div>
-              <div className="recommendation-value">
-                {nextIrrigation.hours > 0 ? `In ${nextIrrigation.hours} hour${nextIrrigation.hours > 1 ? 's' : ''}` : `In ${nextIrrigation.minutes} minutes`}
-              </div>
-            </div>
-          </div>
-          <div className="recommendation-item">
-            <Activity size={24} color="#f59e0b" />
-            <div>
-              <div className="recommendation-label">Duration</div>
-              <div className="recommendation-value">{nextIrrigation.duration} minutes</div>
-            </div>
-          </div>
-          <div className="recommendation-item">
-            <Droplets size={24} color="#3b82f6" />
-            <div>
-              <div className="recommendation-label">Water Needed</div>
-              <div className="recommendation-value">{nextIrrigation.water} liters</div>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-10">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('schedule')}</h2>
+        <p className="text-muted-foreground font-medium">AI-driven irrigation planning and historical logs</p>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="section-card"
+        className="bg-primary p-8 md:p-10 rounded-[2.5rem] text-primary-foreground shadow-2xl shadow-primary/20 relative overflow-hidden"
       >
-        <h3 className="section-title">
-          <History size={20} color="#10b981" /> Irrigation Logs
-        </h3>
-        <div className="irrigation-logs">
-          {history.map((log, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + idx * 0.1 }}
-              className="log-item"
-            >
-              <div className="log-icon">💧</div>
-              <div className="log-info">
-                <div className="log-date">{log.date || 'Today'} at {log.time}</div>
-                <div className="log-action">Pump turned ON</div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold uppercase tracking-widest leading-none">AI RECOMMENDATION</div>
+          </div>
+          <h3 className="text-3xl md:text-4xl font-black mb-8 leading-tight">Your field will need water in <span className="underline decoration-white/30">{nextIrrigation.hours} hours</span>.</h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 pt-8 border-t border-white/10">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-2">Duration</div>
+              <div className="text-2xl font-black">{nextIrrigation.duration} Minutes</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-2">Est. Consumption</div>
+              <div className="text-2xl font-black">{nextIrrigation.water} Liters</div>
+            </div>
+            <div className="flex items-end">
+              <button className="w-full py-4 bg-white text-primary rounded-2xl font-black transition-all hover:scale-105 active:scale-95 shadow-xl shadow-black/10">
+                Queue System
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="bg-card border border-border p-8 rounded-[2rem]">
+        <div className="flex items-center gap-3 mb-8">
+          <History className="text-muted-foreground" size={20} />
+          <h3 className="text-lg font-bold">Activity Log</h3>
+        </div>
+
+        <div className="space-y-4">
+          {history.length > 0 ? history.map((log, i) => (
+            <div key={i} className="flex items-center justify-between p-5 bg-secondary/30 rounded-2xl border border-border/50 group hover:border-primary/20 transition-all">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold group-hover:scale-110 transition-transform">
+                  <Droplets size={18} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-foreground">Irrigation Cycle Complete</div>
+                  <div className="text-[10px] font-medium text-muted-foreground">{log.date || 'Today'} at {log.time}</div>
+                </div>
               </div>
-              <div className="log-water">{log.water}L used</div>
-            </motion.div>
-          ))}
-          {history.length === 0 && (
-            <div className="no-logs">No recent irrigation logs</div>
+              <div className="text-lg font-black text-primary">+{log.water}L</div>
+            </div>
+          )) : (
+            <div className="py-12 text-center text-muted-foreground font-medium italic">No activity recorded in the last 24 hours</div>
           )}
         </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <TrendingUp size={20} color="#3b82f6" /> Weekly Water Usage
-        </h3>
-        <div className="water-usage">
-          <div className="usage-value">1,240<span className="usage-unit">Liters</span></div>
-          <div className="usage-comparison" style={{ color: '#10b981' }}>
-            <TrendingUp size={18} /> 12% less than last week
-          </div>
-        </div>
-      </motion.div>
-    </>
+      </div>
+    </div>
   );
 
   const renderSatellite = () => (
-    <>
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-title"
-      >
-        Satellite Monitoring
-      </motion.h2>
-      <p className="page-subtitle">Monitor crop health using satellite imagery</p>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <Satellite size={20} color="#10b981" /> Crop Health (NDVI)
-        </h3>
-        {satelliteData ? (
-          <div className="satellite-health-display">
-            <div className="ndvi-value-large">
-              <div className="ndvi-number">{satelliteData.ndvi_value}</div>
-              <div className="ndvi-label">NDVI Index</div>
-            </div>
-            <div className="ndvi-status">
-              <div className={`ndvi-badge ${satelliteData.health_status.toLowerCase().replace(' ', '-')}`}>
-                {satelliteData.health_status}
-              </div>
-              {satelliteData.stress_alert && (
-                <div className="stress-alert">
-                  <AlertTriangle size={20} color="#ef4444" />
-                  <span>Crop stress detected</span>
-                </div>
-              )}
-            </div>
-            <div className="ndvi-info">
-              <div className="info-item">
-                <span className="info-label">Image Date:</span>
-                <span className="info-value">{new Date(satelliteData.image_date).toLocaleDateString()}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Source:</span>
-                <span className="info-value">{satelliteData.source}</span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="no-data">Satellite data not available</div>
-        )}
+    <div className="space-y-10">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Satellite Intelligence</h2>
+        <p className="text-muted-foreground font-medium">Sentinel-2 Orbital Analytics for {currentStatus.farmer_village}</p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <Activity size={20} color="#3b82f6" /> AI Insights
-        </h3>
-        {satelliteInsights && satelliteInsights.insights.length > 0 ? (
-          <div className="insights-list">
-            {satelliteInsights.insights.map((insight, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + idx * 0.1 }}
-                className={`insight-item insight-${insight.type}`}
-              >
-                <div className="insight-icon">
-                  {insight.type === 'critical' && <AlertTriangle size={20} color="#ef4444" />}
-                  {insight.type === 'warning' && <AlertTriangle size={20} color="#f59e0b" />}
-                  {insight.type === 'positive' && <Activity size={20} color="#10b981" />}
-                </div>
-                <div className="insight-content">
-                  <div className="insight-message">{insight.message}</div>
-                  <div className="insight-action">Action: {insight.action}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="no-data">No insights available</div>
-        )}
-      </motion.div>
+      {satelliteAlert && (
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-red-500/10 border border-red-500/50 p-6 rounded-[2rem] flex items-center gap-4 text-red-500"
+        >
+          <AlertTriangle className="animate-pulse" size={24} />
+          <div className="font-bold">{satelliteAlert}</div>
+        </motion.div>
+      )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <TrendingUp size={20} color="#10b981" /> NDVI Interpretation
-        </h3>
-        <div className="ndvi-scale">
-          <div className="scale-item">
-            <div className="scale-color" style={{ background: '#ef4444' }}></div>
-            <div className="scale-label">
-              <div className="scale-range">0.0 - 0.3</div>
-              <div className="scale-desc">Poor vegetation / Crop stress</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-xl"
+        >
+          <div className="p-8 border-b border-border flex items-center justify-between">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Satellite className="text-primary" /> {satMode === 'ndvi' ? 'Crop Health Heatmap' : 'Natural Field View'}
+            </h3>
+            <div className="flex items-center gap-4">
+              <div className="flex bg-secondary/50 p-1 rounded-xl border border-border">
+                <button
+                  onClick={() => setSatMode('ndvi')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${satMode === 'ndvi' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Health Map
+                </button>
+                <button
+                  onClick={() => setSatMode('rgb')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${satMode === 'rgb' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Natural Photo
+                </button>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/10 uppercase tracking-widest">
+                Last Pass: {satelliteData?.image_date || "--"}
+              </div>
             </div>
           </div>
-          <div className="scale-item">
-            <div className="scale-color" style={{ background: '#f59e0b' }}></div>
-            <div className="scale-label">
-              <div className="scale-range">0.3 - 0.5</div>
-              <div className="scale-desc">Moderate vegetation</div>
-            </div>
-          </div>
-          <div className="scale-item">
-            <div className="scale-color" style={{ background: '#10b981' }}></div>
-            <div className="scale-label">
-              <div className="scale-range">0.5 - 0.8</div>
-              <div className="scale-desc">Healthy vegetation</div>
-            </div>
-          </div>
-          <div className="scale-item">
-            <div className="scale-color" style={{ background: '#059669' }}></div>
-            <div className="scale-label">
-              <div className="scale-range">0.8 - 1.0</div>
-              <div className="scale-desc">Very healthy vegetation</div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="section-card"
-      >
-        <h3 className="section-title">
-          <MapPin size={20} color="#3b82f6" /> Field Map
-        </h3>
-        {data?.field_info?.id && (
-          <div className="field-map-container">
-            <MapContainer
-              center={[data?.latitude || 17.3850, data?.longitude || 78.4867]}
-              zoom={13}
-              style={{ height: '400px', width: '100%', borderRadius: '0.75rem' }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap contributors'
-              />
-              {data?.latitude && data?.longitude && (
-                <>
-                  <Marker position={[data.latitude, data.longitude]}>
-                    <Popup>
-                      <div className="map-popup">
-                        <div className="popup-title">{currentStatus.farmer_village}</div>
-                        <div className="popup-info">
-                          <div>Crop: {currentStatus.field_info?.crop}</div>
-                          <div>Area: {currentStatus.field_info?.area} hectares</div>
-                          <div>NDVI: {satelliteData?.ndvi_value || 'N/A'}</div>
-                          <div>Health: {satelliteData?.health_status || 'N/A'}</div>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                  <Circle
-                    center={[data.latitude, data.longitude]}
-                    radius={500}
-                    pathOptions={{
-                      color: satelliteData?.stress_alert ? '#ef4444' :
-                        satelliteData?.health_status?.includes('Poor') ? '#f59e0b' :
-                          satelliteData?.health_status?.includes('Moderate') ? '#f59e0b' :
-                            satelliteData?.health_status?.includes('Healthy') ? '#10b981' : '#3b82f6',
-                      fillColor: satelliteData?.stress_alert ? '#ef4444' :
-                        satelliteData?.health_status?.includes('Poor') ? '#f59e0b' :
-                          satelliteData?.health_status?.includes('Moderate') ? '#f59e0b' :
-                            satelliteData?.health_status?.includes('Healthy') ? '#10b981' : '#3b82f6',
-                      fillOpacity: 0.3,
-                      weight: 2
-                    }}
+          <div className="relative h-[500px] w-full bg-secondary/20">
+            {healthMapUrls === 'error' ? (
+              <div className="h-full w-full flex items-center justify-center flex-col gap-4 p-8 text-center">
+                <AlertTriangle className="text-yellow-500" size={40} />
+                <p className="text-muted-foreground font-bold">Cloud Cover Interference</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  We couldn't get a clear orbital view of your farm from Sentinel-2 right now. This usually happens during heavy cloud cover.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-6 py-2 bg-secondary rounded-xl text-xs font-bold hover:bg-secondary/80"
+                >
+                  Retry Orbital Pass
+                </button>
+              </div>
+            ) : healthMapUrls && healthMapUrls !== 'error' ? (
+              <div className="h-full w-full relative group">
+                <img
+                  src={satMode === 'ndvi' ? healthMapUrls.ndvi_viz_url : healthMapUrls.true_color_url}
+                  className="w-full h-full object-cover transition-opacity duration-500"
+                  alt="Satellite View"
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                  <div className="p-4 bg-card/90 backdrop-blur rounded-2xl border border-white/10 text-xs font-bold">
+                    {satMode === 'ndvi' ? 'Spectral Analysis (Sentinel-2)' : 'True Color RGB (Sentinel-2)'}
+                  </div>
+                </div>
+
+                {/* Map Legend - Only show in NDVI mode */}
+                {satMode === 'ndvi' && (
+                  <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-white/10 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
+                      <div className="w-3 h-3 rounded-full bg-[#00ff00]" /> Healthy
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
+                      <div className="w-3 h-3 rounded-full bg-[#ffff00]" /> Moderate
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
+                      <div className="w-3 h-3 rounded-full bg-[#ff0000]" /> Stressed
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center flex-col gap-4">
+                <Loader2 className="animate-spin text-primary" size={40} />
+                <p className="text-muted-foreground font-medium text-center">
+                  Requesting spectral data from <br />Google Earth Engine...
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        <div className="space-y-8 flex flex-col">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-card border border-border p-8 rounded-[2.5rem] flex-1"
+          >
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">NDVI Index</div>
+            <div className="text-6xl font-black text-primary mb-4">
+              {satelliteData?.ndvi_value || "0.00"}
+            </div>
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-extrabold mb-6 uppercase tracking-wider ${satelliteData?.ndvi_value > 0.6 ? 'bg-green-500/10 text-green-500' :
+              satelliteData?.ndvi_value > 0.3 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
+              }`}>
+              {satelliteData?.status || "Analyzing..."}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
+              {satelliteData?.ndvi_value > 0.6
+                ? "Highly active photosynthesis detected. Vegetation is robust and healthy."
+                : satelliteData?.ndvi_value > 0.3
+                  ? "Moderate vegetation detected. Normal growth patterns for this season."
+                  : "LOW VEGETATION. Potential crop stress or water deficit detected via spectral signature."}
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-card border border-border p-8 rounded-[2.5rem] h-[300px]"
+          >
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-6">Growth Trend</div>
+            <div className="h-[180px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={ndviTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <XAxis dataKey="week" stroke="#64748b" fontSize={10} fontWeight="bold" />
+                  <YAxis domain={[0, 1]} stroke="#64748b" fontSize={10} fontWeight="bold" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem' }}
+                    itemStyle={{ color: '#eab308' }}
                   />
-                </>
-              )}
-            </MapContainer>
-            <div className="map-legend">
-              <div className="legend-title">NDVI Health Status</div>
-              <div className="legend-items">
-                <div className="legend-item">
-                  <div className="legend-color" style={{ background: '#ef4444' }}></div>
-                  <span>Poor / Stress</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-color" style={{ background: '#f59e0b' }}></div>
-                  <span>Moderate</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-color" style={{ background: '#10b981' }}></div>
-                  <span>Healthy</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-color" style={{ background: '#059669' }}></div>
-                  <span>Very Healthy</span>
-                </div>
-              </div>
+                  <Line type="monotone" dataKey="ndvi" stroke="#eab308" strokeWidth={4} dot={{ r: 4, fill: '#eab308' }} activeDot={{ r: 8 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        )}
-      </motion.div>
-    </>
+          </motion.div>
+        </div>
+      </div>
+    </div>
   );
 
   const renderContent = () => {
@@ -1170,135 +1016,172 @@ const App = () => {
         return renderCrops();
       case 'schedule':
         return renderSchedule();
+      case 'settings':
+        return (
+          <ProfileSettings
+            token={token}
+            onLogout={handleLogout}
+            API_BASE={API_BASE}
+            onProfileUpdate={(newProfile) => setProfile(newProfile)}
+          />
+        );
       default:
         return renderHome();
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="dashboard-container">
-      <header className="header">
-        <div className="logo">
-          <Droplets size={36} color="white" />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="dashboard-container bg-background min-h-screen">
+      <header className="header bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <Droplets size={24} color="white" />
+          </div>
           <div>
-            <h1>IrrigateAI</h1>
-            <p className="logo-subtitle">Smart Farming Assistant</p>
+            <h1 className="text-xl font-display font-extrabold tracking-tight text-foreground leading-none">GraminLink</h1>
+            <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-0.5">Precision AI</p>
           </div>
         </div>
-        <div className="farmer-profile">
-          <div className="language-selector">
-            <Languages size={20} color="white" />
-            <select
-              value={currentLang}
-              onChange={(e) => changeLanguage(e.target.value)}
-              className="lang-select"
-            >
-              <option value="English">ENG</option>
-              <option value="Hindi">HIN</option>
-              <option value="Telugu">TEL</option>
-              <option value="Tamil">TAM</option>
-              <option value="Kannada">KAN</option>
-            </select>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex flex-col items-end">
+            <div className="text-sm font-black text-foreground">{currentStatus.farmer_name || 'Test User'}</div>
+            <div className="text-[10px] font-bold text-primary uppercase tracking-widest">{currentStatus.farmer_village || 'Lead Farmer'}</div>
           </div>
-          <div className="profile-badge">
-            <User size={20} color="white" />
-            <span>{currentStatus.farmer_name}</span>
+
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30 text-primary font-black shadow-lg shadow-primary/5 overflow-hidden">
+            {currentStatus.profile_photo ? (
+              <img
+                src={getProfilePhotoUrl(currentStatus.profile_photo)}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              currentStatus.farmer_name ? currentStatus.farmer_name[0].toUpperCase() : 'T'
+            )}
           </div>
-          <button onClick={handleCall} disabled={calling} className="call-button">
-            <Phone size={20} /> {calling ? 'Calling...' : t('call')}
+
+          <div className="h-6 w-px bg-border hidden sm:block mx-1" />
+
+          <button
+            onClick={handleCall}
+            disabled={calling}
+            className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all font-bold text-[12px] group active:scale-95"
+          >
+            <Phone size={14} className="group-hover:rotate-12 transition-transform" />
+            <span className="hidden xs:inline">{calling ? 'Connecting...' : t('call')}</span>
           </button>
-          <button onClick={handleLogout} className="logout-button">
-            <LogOut size={20} />
+
+          <button
+            onClick={handleLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive transition-all active:scale-95 border border-destructive/10"
+          >
+            <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      <nav className="nav-tabs">
-        <button className={`nav-tab ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
-          <Home size={24} />
-          <span>{t('home')}</span>
-        </button>
-        <button className={`nav-tab ${activeTab === 'soil' ? 'active' : ''}`} onClick={() => setActiveTab('soil')}>
-          <Droplets size={24} />
-          <span>{t('soilHealth')}</span>
-        </button>
-        <button className={`nav-tab ${activeTab === 'satellite' ? 'active' : ''}`} onClick={() => setActiveTab('satellite')}>
-          <Satellite size={24} />
-          <span>{t('satellite')}</span>
-        </button>
-        <button className={`nav-tab ${activeTab === 'weather' ? 'active' : ''}`} onClick={() => setActiveTab('weather')}>
-          <Cloud size={24} />
-          <span>{t('weather')}</span>
-        </button>
-        <button className={`nav-tab ${activeTab === 'crops' ? 'active' : ''}`} onClick={() => setActiveTab('crops')}>
-          <Sprout size={24} />
-          <span>{t('crops')}</span>
-        </button>
-        <button className={`nav-tab ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>
-          <CalendarDays size={24} />
-          <span>{t('schedule')}</span>
-        </button>
+      <nav className="flex items-center justify-center gap-1 p-2 bg-card/50 border-b border-border sticky top-[73px] z-40 backdrop-blur-md">
+        {[
+          { id: 'home', icon: Home, label: t('home') },
+          { id: 'soil', icon: Droplets, label: t('soilHealth') },
+          { id: 'satellite', icon: Satellite, label: t('satellite') },
+          { id: 'weather', icon: Cloud, label: t('weather') },
+          { id: 'crops', icon: Sprout, label: t('crops') },
+          { id: 'schedule', icon: CalendarDays, label: t('schedule') },
+          { id: 'settings', icon: Settings, label: t('settings') },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium text-sm ${activeTab === tab.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <tab.icon size={20} />
+            <span className="hidden md:inline">{tab.label}</span>
+          </button>
+        ))}
       </nav>
 
       <AnimatePresence>
         {showSettingsModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-overlay"
-          >
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="modal-content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="relative w-full max-w-lg bg-card border border-border rounded-[2.5rem] shadow-2xl p-10 overflow-hidden"
             >
-              <button onClick={() => setShowSettingsModal(false)} className="modal-close">
-                <X size={24} />
-              </button>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16" />
 
-              <h2 className="modal-title">
-                <Settings size={28} color="#10b981" /> Edit Profile
-              </h2>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-black flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Settings className="text-primary" size={20} />
+                    </div>
+                    Field Settings
+                  </h2>
+                  <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="w-10 h-10 rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
 
-              <div className="form-group">
-                <label>Village Location</label>
-                <div className="input-wrapper">
-                  <MapPin size={20} />
-                  <input
-                    value={editForm.village}
-                    onChange={(e) => setEditForm({ ...editForm, village: e.target.value })}
-                    placeholder="Enter village name"
-                  />
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Village Location</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                      <input
+                        className="w-full h-14 bg-secondary/40 border border-border focus:border-primary/50 rounded-2xl pl-12 pr-4 font-bold text-sm transition-all"
+                        value={editForm.village}
+                        onChange={(e) => setEditForm({ ...editForm, village: e.target.value })}
+                        placeholder="Village name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Crop Type</label>
+                    <select
+                      className="w-full h-14 bg-secondary/40 border border-border focus:border-primary/50 rounded-2xl px-4 font-bold text-sm transition-all appearance-none cursor-pointer"
+                      value={editForm.crop_type}
+                      onChange={(e) => setEditForm({ ...editForm, crop_type: e.target.value })}
+                    >
+                      <option>Rice</option>
+                      <option>Wheat</option>
+                      <option>Maize</option>
+                      <option>Cotton</option>
+                      <option>Sugarcane</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={saveSettings}
+                    disabled={savingStatus}
+                    className="w-full h-14 bg-primary text-primary-foreground rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
+                  >
+                    {savingStatus ? <Loader2 className="animate-spin" size={20} /> : 'Apply Optimization'}
+                  </button>
                 </div>
               </div>
-
-              <div className="form-group">
-                <label>Crop Type</label>
-                <select
-                  value={editForm.crop_type}
-                  onChange={(e) => setEditForm({ ...editForm, crop_type: e.target.value })}
-                >
-                  <option>Rice</option>
-                  <option>Wheat</option>
-                  <option>Maize</option>
-                  <option>Cotton</option>
-                  <option>Sugarcane</option>
-                </select>
-              </div>
-
-              <button onClick={saveSettings} disabled={savingStatus} className="save-button">
-                {savingStatus ? 'Saving...' : 'Save Changes'}
-              </button>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      <main className="content">
+      <main className="container max-w-7xl mx-auto px-6 py-10 overflow-hidden">
         {renderContent()}
       </main>
+      <Toaster position="bottom-right" richColors />
     </motion.div>
   );
 };
