@@ -15,11 +15,11 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 # Language mapping for Twilio <Say> with Google voices
 LANGUAGE_MAP = {
-    "English": {"lang": "en-IN", "voice": "Google.en-IN-Standard-A"},
-    "Hindi": {"lang": "hi-IN", "voice": "Google.hi-IN-Standard-A"},
-    "Telugu": {"lang": "te-IN", "voice": "Google.te-IN-Standard-A"},
-    "Tamil": {"lang": "ta-IN", "voice": "Google.ta-IN-Standard-A"},
-    "Kannada": {"lang": "kn-IN", "voice": "Google.kn-IN-Standard-A"}
+    "English": {"lang": "en-IN", "voice": "Polly.Raveena"},
+    "Hindi": {"lang": "hi-IN", "voice": "Polly.Aditi"},
+    "Telugu": {"lang": "te-IN", "voice": "Polly.Aditi"},
+    "Tamil": {"lang": "ta-IN", "voice": "Polly.Aditi"},
+    "Kannada": {"lang": "kn-IN", "voice": "Polly.Aditi"}
 }
 
 class TwilioVoiceService:
@@ -53,11 +53,11 @@ class TwilioVoiceService:
         gather = Gather(num_digits=1, action=f"{base_url}/api/v1/voice/save-language", method='POST', timeout=10)
         
         # Keep it SHORT to fit within trial time limit
-        gather.say("English press 1.", voice="Google.en-IN-Standard-A", language="en-IN")
-        gather.say("हिंदी के लिए 2 दबाएं।", voice="Google.hi-IN-Standard-A", language="hi-IN")
-        gather.say("తెలుగు కోసం 3 నొక్కండి.", voice="Google.te-IN-Standard-A", language="te-IN")
-        gather.say("தமிழுக்கு 4 அழுத்தவும்.", voice="Google.ta-IN-Standard-A", language="ta-IN")
-        gather.say("ಕನ್ನಡಕ್ಕಾಗಿ 5 ಒತ್ತಿರಿ.", voice="Google.kn-IN-Standard-A", language="kn-IN")
+        gather.say("English press 1.", voice="Polly.Raveena", language="en-IN")
+        gather.say("हिंदी के लिए 2 दबाएं।", voice="Polly.Aditi", language="hi-IN")
+        gather.say("తెలుగు కోసం 3 నొక్కండి.", voice="Polly.Aditi", language="te-IN")
+        gather.say("தமிழுக்கு 4 அழுத்தவும்.", voice="Polly.Aditi", language="ta-IN")
+        gather.say("ಕನ್ನಡಕ್ಕಾಗಿ 5 ಒತ್ತಿರಿ.", voice="Polly.Aditi", language="kn-IN")
         
         response.append(gather)
         response.redirect(f"{base_url}/api/v1/voice/language-selection")

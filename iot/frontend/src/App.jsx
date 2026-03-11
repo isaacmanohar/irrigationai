@@ -69,7 +69,12 @@ const translations = {
     ndviInterpretation: "NDVI Interpretation",
     logout: "Logout",
     call: "Call",
-    settings: "Settings"
+    settings: "Settings",
+    callOptions: "Call Options",
+    moistureUpdate: "Moisture & Schedule",
+    pumpControl: "Pump Control",
+    cropHealth: "Crop Health",
+    rainStatus: "Rain Status"
   },
   Hindi: {
     home: "होम",
@@ -104,7 +109,12 @@ const translations = {
     ndviInterpretation: "NDVI व्याख्या",
     logout: "लॉगआउट",
     call: "कॉल करें",
-    settings: "सेटिंग्स"
+    settings: "सेटिंग्स",
+    callOptions: "कॉल विकल्प",
+    moistureUpdate: "नमी और शेड्यूल",
+    pumpControl: "पंप नियंत्रण",
+    cropHealth: "फसल स्वास्थ्य",
+    rainStatus: "बारिश की स्थिति"
   },
   Telugu: {
     home: "హోమ్",
@@ -139,7 +149,12 @@ const translations = {
     ndviInterpretation: "NDVI వివరణ",
     logout: "లాగ్ అవుట్",
     call: "కాల్ చేయండి",
-    settings: "సెట్టింగ్‌లు"
+    settings: "సెట్టింగ్‌లు",
+    callOptions: "కాల్ ఎంపికలు",
+    moistureUpdate: "తేమ మరియు షెడ్యూల్",
+    pumpControl: "పంప్ నియంత్రణ",
+    cropHealth: "పంట ఆరోగ్యం",
+    rainStatus: "వర్షం పరిస్థితి"
   },
   Tamil: {
     home: "முகப்பு",
@@ -231,6 +246,7 @@ const App = () => {
   const [healthMapUrls, setHealthMapUrls] = useState(null);
   const [satelliteAlert, setSatelliteAlert] = useState(null);
   const [satMode, setSatMode] = useState('ndvi'); // 'ndvi' or 'rgb'
+  const [showCallMenu, setShowCallMenu] = useState(false);
 
   const t = (key) => {
     const lang = translations[currentLang] || translations['English'];
@@ -385,13 +401,15 @@ const App = () => {
     { time: '18:00', moisture: 42, water: 0, date: 'Mar 06' },
   ];
 
-  const handleCall = async () => {
+  const handleCall = async (requestType = 'updates') => {
     setCalling(true);
+    setShowCallMenu(false);
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub || 1;
-      await axios.post(`${API_BASE}/voice/call-advisory/${userId}`);
-      alert("Call initiated successfully!");
+      const userId = getUserId();
+      await axios.post(`${API_BASE}/voice/trigger-request/${userId}?request_type=${requestType}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Call for ${requestType.replace('_', ' ')} initiated!`);
     } catch (err) {
       alert("Failed to initiate call. Check Twilio credentials in .env");
     } finally {
@@ -1063,7 +1081,7 @@ const App = () => {
           <div className="h-6 w-px bg-border hidden sm:block mx-1" />
 
           <button
-            onClick={handleCall}
+            onClick={() => setShowCallMenu(true)}
             disabled={calling}
             className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all font-bold text-[12px] group active:scale-95"
           >
@@ -1177,6 +1195,55 @@ const App = () => {
           </div>
         )}
       </AnimatePresence>
+
+        {showCallMenu && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCallMenu(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="relative w-full max-w-sm bg-card border border-border rounded-[2.5rem] shadow-2xl p-8 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-black">{t('callOptions')}</h3>
+                  <button onClick={() => setShowCallMenu(false)} className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {[
+                    { id: 'updates', label: t('moistureUpdate'), icon: Droplets, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                    { id: 'pump_control', label: t('pumpControl'), icon: Power, color: 'text-green-500', bg: 'bg-green-500/10' },
+                    { id: 'crop_health', label: t('cropHealth'), icon: Sprout, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                    { id: 'rain_status', label: t('rainStatus'), icon: CloudRain, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => handleCall(option.id)}
+                      className="flex items-center gap-4 p-4 bg-secondary/40 hover:bg-secondary border border-border rounded-2xl transition-all group active:scale-95"
+                    >
+                      <div className={`w-10 h-10 rounded-xl ${option.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                        <option.icon className={`w-5 h-5 ${option.color}`} />
+                      </div>
+                      <span className="font-bold text-sm">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
       <main className="container max-w-7xl mx-auto px-6 py-10 overflow-hidden">
         {renderContent()}
