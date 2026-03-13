@@ -114,3 +114,37 @@ class UserSettings(Base):
     water_usage_limit = Column(Integer, default=500) # liters per day
     
     owner = relationship("Farmer", back_populates="settings")
+
+class IrrigationSchedule(Base):
+    __tablename__ = "irrigation_schedules"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    field_id = Column(Integer, ForeignKey("fields.id"))
+    
+    # Schedule metadata
+    generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    valid_from = Column(DateTime)
+    valid_until = Column(DateTime)
+    
+    # Current sensor readings used for schedule
+    soil_moisture = Column(Float)
+    temperature = Column(Float)
+    humidity = Column(Float)
+    ndvi_value = Column(Float, nullable=True)
+    rainfall_forecast = Column(Float)
+    
+    # Schedule data (JSON stored as string)
+    schedule_data = Column(String)  # JSON string with daily schedule
+    next_irrigation_date = Column(DateTime)
+    next_irrigation_water_mm = Column(Float)
+    
+    # Risk assessment
+    drought_risk = Column(String)  # low, medium, high
+    waterlogging_risk = Column(String)  # low, medium, high
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    field = relationship("Field")
