@@ -7,7 +7,7 @@
 [![Scikit-Learn](https://img.shields.io/badge/ML-Scikit--Learn-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
 [![Groq AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.3-f34f29?style=flat-square)](https://groq.com/)
 [![Sentinel-2](https://img.shields.io/badge/Satellite-Sentinel--2%20NDVI-005B94?style=flat-square)](https://earthengine.google.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue.style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.style=flat-square)](../LICENSE)
 
 **IrrigationAI** is an end-to-end, multi-tier precision agriculture platform that combines real-time IoT sensor telemetry, machine learning predictions, satellite crop health monitoring (Sentinel-2 NDVI via Google Earth Engine), Groq AI LLM schedule advisors (`llama-3.3-70b-versatile`), live weather forecasting, and automated Twilio Voice AI call agents for farmers.
 
@@ -75,7 +75,6 @@ flowchart TB
 ```text
 .
 ├── README.md
-├── package-lock.json
 └── iot/
     ├── backend/                          # FastAPI REST API & AI Engine
     │   ├── app/
