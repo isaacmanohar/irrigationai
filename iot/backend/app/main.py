@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 from .api import farmers, sensors, dashboard, voice, satellite, schedule
 from .db.session import init_db
 from .services.scheduler import start_scheduler, stop_scheduler
+from .services.mqtt_service import mqtt_service
 
 app = FastAPI(title="AI Precision Irrigation Assistant API")
 
@@ -36,15 +37,18 @@ app.include_router(schedule.router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Start background scheduler on app startup"""
+    """Start background scheduler and MQTT service on app startup"""
     logger.info("Starting application...")
     start_scheduler()
+    mqtt_service.start()
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Stop background scheduler on app shutdown"""
+    """Stop background scheduler and MQTT service on app shutdown"""
     logger.info("Shutting down application...")
     stop_scheduler()
+    mqtt_service.stop()
+
 
 @app.get("/")
 async def root():
