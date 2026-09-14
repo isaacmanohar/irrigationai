@@ -120,3 +120,30 @@ class ProfileUpdate(BaseModel):
 class PumpControl(BaseModel):
     field_id: int
     action: str # "START" or "STOP"
+
+
+class FeedbackCreate(BaseModel):
+    """Phase 9 — Farmer feedback on an AI recommendation."""
+    field_id: int
+    ai_decision: str                          # irrigate / delay / skip / monitor
+    recommended_water_mm: float = 0.0
+    ai_confidence: float = 0.0
+    agent_reasoning: Optional[List[str]] = [] # stored as JSON string in DB
+    farmer_response: str                      # accepted / rejected / modified
+    actual_water_mm: Optional[float] = None
+    farmer_notes: Optional[str] = None
+
+
+class FeedbackResponse(BaseModel):
+    id: int
+    field_id: int
+    ai_decision: str
+    recommended_water_mm: float
+    farmer_response: str
+    actual_water_mm: Optional[float]
+    farmer_notes: Optional[str]
+    recommendation_at: datetime
+    response_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True

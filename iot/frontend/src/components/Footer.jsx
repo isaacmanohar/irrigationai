@@ -10,7 +10,7 @@ const Footer = ({ t }) => {
   return (
     <footer className="py-10 bg-card border-t border-border">
       <div className="container flex flex-col md:flex-row items-center justify-between gap-6">
-        <span className="font-display text-lg font-extrabold text-primary">GraminLink</span>
+        <span className="font-display text-lg font-extrabold text-primary">AgriMate</span>
         <div className="flex flex-wrap gap-6 justify-center">
           {footerLinks.map((link) => (
             <a
@@ -22,7 +22,7 @@ const Footer = ({ t }) => {
             </a>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">{t('footer_rights') || "© 2026 GraminLink. All rights reserved."}</p>
+        <p className="text-xs text-muted-foreground">{t('footer_rights') || "© 2026 AgriMate. All rights reserved."}</p>
       </div>
     </footer>
   );

@@ -68,7 +68,8 @@ def train_and_save():
     reg.fit(X_train_r, y_train_r)
     
     # Save models
-    save_dir = 'd:/iot/iot-day2/iot/iot/ml_model/saved_models'
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(current_dir, 'saved_models')
     os.makedirs(save_dir, exist_ok=True)
     
     joblib.dump(clf, os.path.join(save_dir, 'irrigation_model.pkl'))

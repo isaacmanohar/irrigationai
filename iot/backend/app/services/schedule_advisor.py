@@ -53,24 +53,24 @@ class ScheduleAdvisor:
         try:
             # If coordinates provided, fetch real weather data
             if latitude and longitude:
-                from ..services.weather import get_weather
+                from ..services.weather import get_detailed_forecast
                 import asyncio
                 
-                # Get weather data
-                weather_data = asyncio.run(get_weather(latitude, longitude))
+                # Get detailed 7-day forecast (real data from Open-Meteo daily endpoint)
+                weather_data = asyncio.run(get_detailed_forecast(latitude, longitude))
                 
                 if weather_data:
-                    # Extract 7-day rain forecast (use daily data or estimate)
                     weekly_rain_forecast = self._extract_weekly_rain_forecast(weather_data)
-                    logger.info(f"Fetched real-time weather data for coordinates ({latitude}, {longitude})")
+                    logger.info(f"Fetched real 7-day weather forecast for ({latitude}, {longitude})")
                 else:
-                    logger.warning("Could not fetch weather data, using provided forecast")
+                    logger.warning("Could not fetch weather forecast, using default zeros")
                     if not weekly_rain_forecast:
-                        weekly_rain_forecast = [0] * 7
+                        weekly_rain_forecast = [0.0] * 7
             else:
                 # Use provided forecast or default
                 if not weekly_rain_forecast:
-                    weekly_rain_forecast = [0] * 7
+                    weekly_rain_forecast = [0.0] * 7
+
             
             # Prepare context for Groq
             prompt = self._build_schedule_prompt(
@@ -119,17 +119,22 @@ class ScheduleAdvisor:
             }
     
     def _extract_weekly_rain_forecast(self, weather_data: Dict) -> List[float]:
-        """Extract 7-day rain forecast from weather API data"""
+        """Extract 7-day rain forecast from detailed weather API data (Phase 8 fix).
+        Falls back to [0]*7 if daily data is unavailable."""
         try:
-            # This is a placeholder - actual implementation depends on weather API response
-            # For now, return estimated values based on current precipitation
-            current_precip = weather_data.get('precipitation', 0)
-            # Estimate 7-day forecast (in real scenario, API would provide this)
-            return [current_precip * 0.8, current_precip * 0.6, 0, current_precip * 1.2, 
-                   current_precip * 0.5, 0, 0]
+            daily_rain = weather_data.get("daily_rain_mm")
+            if daily_rain and isinstance(daily_rain, list):
+                result = [float(v) for v in daily_rain[:7]]
+                while len(result) < 7:
+                    result.append(0.0)
+                return result
+            # Fallback: use current precipitation for today only
+            current_precip = weather_data.get("precipitation", 0) or 0
+            return [float(current_precip)] + [0.0] * 6
         except Exception as e:
             logger.error(f"Error extracting rain forecast: {str(e)}")
-            return [0] * 7
+            return [0.0] * 7
+
     
     def _build_schedule_prompt(
         self,

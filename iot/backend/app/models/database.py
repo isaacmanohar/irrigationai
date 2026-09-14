@@ -146,5 +146,34 @@ class IrrigationSchedule(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-    
+
+    field = relationship("Field")
+
+
+class AIRecommendationFeedback(Base):
+    """
+    Phase 9 — Farmer feedback on AI irrigation decisions.
+    Stores what the AI recommended, what the farmer chose to do, and the outcome.
+    Enables future analysis and model-improvement pipelines.
+    """
+    __tablename__ = "ai_recommendation_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    field_id = Column(Integer, ForeignKey("fields.id"), nullable=False)
+
+    # What the AI decided
+    ai_decision = Column(String)            # irrigate / delay / skip / monitor
+    recommended_water_mm = Column(Float, default=0.0)
+    ai_confidence = Column(Float, default=0.0)
+    agent_reasoning = Column(String, nullable=True)   # JSON list stored as string
+
+    # What the farmer chose
+    farmer_response = Column(String)        # accepted / rejected / modified
+    actual_water_mm = Column(Float, nullable=True)    # what was actually applied
+    farmer_notes = Column(String, nullable=True)      # free-text comment
+
+    # Timestamps
+    recommendation_at = Column(DateTime, default=datetime.datetime.utcnow)
+    response_at = Column(DateTime, nullable=True)
+
     field = relationship("Field")

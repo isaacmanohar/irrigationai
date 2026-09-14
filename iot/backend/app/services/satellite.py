@@ -16,7 +16,14 @@ class SatelliteService:
             # GEE Authentication configuration
             service_account = os.getenv("GEE_SERVICE_ACCOUNT")
             private_key_path = os.getenv("GEE_PRIVATE_KEY_PATH")
-            project_id = os.getenv("GEE_PROJECT_ID", "irrigation-ai")
+            project_id = os.getenv("GEE_PROJECT_ID", "irrigationai-489714")
+
+            if private_key_path and not os.path.isabs(private_key_path):
+                # Resolve relative to backend root
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                resolved_key = os.path.join(base_dir, private_key_path)
+                if os.path.exists(resolved_key):
+                    private_key_path = resolved_key
 
             try:
                 if service_account and private_key_path and os.path.exists(private_key_path):
@@ -174,6 +181,7 @@ class SatelliteService:
         # Using Google Hybrid/Satellite tiles for a "live" look in simulation
         # lyrs=s: Satellite, lyrs=y: Hybrid
         tile_url = f"https://mt1.google.com/vt/lyrs=y&x={xtile}&y={ytile}&z={zoom}"
+        esri_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{ytile}/{xtile}"
         
         random.seed(int(lat * 1000 + lon * 1000))
         ndvi = round(random.uniform(0.2, 0.8), 3)
@@ -181,8 +189,8 @@ class SatelliteService:
         
         return {
             "rgb_image_url": tile_url,
-            "false_color_url": tile_url, # Fallback to real tile
-            "ndvi_image_url": "https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&w=800&q=80", # Farm placeholder
+            "false_color_url": esri_url,
+            "ndvi_image_url": tile_url,
             "ndvi_value": ndvi,
             "health_status": status,
             "stress_alert": alert,

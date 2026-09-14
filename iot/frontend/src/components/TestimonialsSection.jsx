@@ -5,7 +5,7 @@ const testimonials = [
   {
     name: "Rajesh Patil",
     location: "Nashik, Maharashtra",
-    quote: "GraminLink helped us understand our soil better and plan our inputs more efficiently — we saw real savings in the first season.",
+    quote: "AgriMate helped us understand our soil better and plan our inputs more efficiently — we saw real savings in the first season.",
   },
   {
     name: "Sukhwinder Singh",
@@ -15,7 +15,7 @@ const testimonials = [
   {
     name: "Anitha Reddy",
     location: "Guntur, Andhra Pradesh",
-    quote: "With GraminLink's hardware, I get alerts on my phone about field conditions — it's like having eyes on every acre.",
+    quote: "With AgriMate's hardware, I get alerts on my phone about field conditions — it's like having eyes on every acre.",
   },
 ];
 
@@ -34,7 +34,7 @@ const TestimonialsSection = () => {
           Real farmers, real results
         </h2>
         <p className="text-muted-foreground mb-14 text-sm">
-          Farmers across India trust GraminLink to grow smarter.
+          Farmers across India trust AgriMate to grow smarter.
         </p>
 
         <div key={active} className="animate-fade-in">

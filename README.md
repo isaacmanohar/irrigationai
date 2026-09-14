@@ -1,4 +1,4 @@
-# 🌾 IrrigationAI: IoT + AI Precision Smart Agriculture System
+# 🌾 AgriMate: Agentic AI-Based Explainable Precision Farming System
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18.0%2B-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
@@ -9,7 +9,7 @@
 [![Sentinel-2](https://img.shields.io/badge/Satellite-Sentinel--2%20NDVI-005B94?style=flat-square)](https://earthengine.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.style=flat-square)](LICENSE)
 
-**IrrigationAI** is an end-to-end, multi-tier precision agriculture platform that combines real-time IoT sensor telemetry, machine learning predictions, satellite crop health monitoring (Sentinel-2 NDVI via Google Earth Engine), Groq AI LLM schedule advisors (`llama-3.3-70b-versatile`), live weather forecasting, and automated Twilio Voice AI call agents for farmers.
+**AgriMate** is an end-to-end, multi-source precision agriculture and irrigation platform that combines real-time IoT sensor telemetry (MQTT/HTTP), machine learning predictions, satellite crop health monitoring (Sentinel-2 NDVI via Google Earth Engine), Agentic AI decision reasoning (REASON → PLAN → DECIDE), Explainable AI (XAI) transparent factors, live weather forecasting, farmer feedback loops, and automated Twilio Voice AI agents for farmers.
 
 ---
 

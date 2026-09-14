@@ -39,3 +39,7 @@ Thumbs.db
 
 # Backups
 *.zip
+
+# Local Cache & Tool Data
+.freebuff/
+test_result.json

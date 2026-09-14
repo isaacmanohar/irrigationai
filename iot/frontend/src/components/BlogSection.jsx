@@ -6,19 +6,19 @@ const posts = [
   {
     image: heroFarm,
     date: "Feb 15, 2026",
-    title: "How GraminLink Helps Small Farmers Plan Smarter Seasons",
+    title: "How AgriMate Helps Small Farmers Plan Smarter Seasons",
     excerpt: "From seed selection to harvest timing — see how data-driven crop planning is transforming small-scale agriculture.",
   },
   {
     image: heroData,
     date: "Jan 22, 2026",
     title: "Understanding Soil Health with Real-Time Sensor Data",
-    excerpt: "Learn how GraminLink's IoT sensors give you a live view of soil moisture, temperature, and nutrient levels.",
+    excerpt: "Learn how AgriMate's IoT sensors give you a live view of soil moisture, temperature, and nutrient levels.",
   },
   {
     image: heroHardware,
     date: "Dec 10, 2025",
-    title: "Meet GraminLink Hub: Your Farm's Command Center",
+    title: "Meet AgriMate Hub: Your Farm's Command Center",
     excerpt: "A single dashboard for yield maps, weather alerts, and advisory — accessible from any device, anywhere.",
   },
 ];
@@ -28,7 +28,7 @@ const BlogSection = () => (
     <div className="container">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
         <div>
-          <h2 className="font-display text-3xl md:text-4xl font-extrabold mb-2">The GraminLink Blog</h2>
+          <h2 className="font-display text-3xl md:text-4xl font-extrabold mb-2">The AgriMate Blog</h2>
           <p className="text-muted-foreground text-sm">Insights, updates, and tips for modern farming.</p>
         </div>
         <a href="#" className="text-primary text-sm font-semibold hover:underline">Read More →</a>

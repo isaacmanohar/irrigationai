@@ -68,18 +68,26 @@ class ScheduleUpdater:
                 return None
             
             # Extract schedule data
+            # schedule_advisor returns the parsed schedule dict directly under 'schedule'
+            # The dict has a 'schedule' key containing the list of daily entries
             schedule_data = schedule_result.get('schedule', {})
-            daily_schedule = schedule_data.get('daily_schedule', [])
-            
-            # Find next irrigation date
+            # The advisor prompt asks for a list under the 'schedule' key
+            daily_schedule = schedule_data.get('schedule', [])
+
+            # Find next irrigation date — first day where irrigate==true
             next_irrigation_date = None
             next_irrigation_water = 0
-            
+
             for day_schedule in daily_schedule:
                 if day_schedule.get('irrigate'):
                     next_irrigation_date = day_schedule.get('date')
-                    next_irrigation_water = day_schedule.get('water_mm', 0)
+                    next_irrigation_water = day_schedule.get('water_amount_mm', 0)
                     break
+
+            # Also try top-level keys set by the advisor
+            if not next_irrigation_date:
+                next_irrigation_date = schedule_data.get('next_irrigation_date')
+                next_irrigation_water = schedule_data.get('next_irrigation_water_mm', 0)
             
             # Parse next irrigation date
             if next_irrigation_date:

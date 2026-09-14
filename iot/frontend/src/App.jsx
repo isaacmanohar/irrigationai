@@ -3,7 +3,8 @@ import {
   Droplets, Thermometer, Wind, Activity, Gauge,
   MapPin, Calendar, Power, AlertTriangle,
   ChevronRight, TrendingUp, History, User, Phone, LogOut, Loader2,
-  Sun, Sunrise, CloudRain, Settings, X, Home, Cloud, Sprout, CalendarDays, Satellite, Languages
+  Sun, Sunrise, CloudRain, Settings, X, Home, Cloud, Sprout, CalendarDays, Satellite, Languages,
+  FlaskConical, Sparkles, Play, Pause, Zap, Bot, RefreshCw
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -105,7 +106,7 @@ const translations = {
     p4: "Climate conditions change rapidly",
     sol_tag: "Our Solution",
     sol_title: "Smart Irrigation Powered by Data",
-    sol_desc: "GraminLink combines IoT, satellite imagery, and AI to give farmers precise, real‑time irrigation guidance.",
+    sol_desc: "AgriMate combines IoT, satellite imagery, and AI to give farmers precise, real‑time irrigation guidance.",
     s1_t: "IoT Soil Monitoring",
     s1_d: "IoT sensors monitor soil moisture, temperature, and nutrient levels in real time.",
     s2_t: "Satellite Crop Health",
@@ -142,7 +143,7 @@ const translations = {
     w1_t: "Small & Medium Farmers",
     w1_d: "Affordable precision irrigation tools designed for farms of any scale.",
     w2_t: "Agri‑Tech Startups",
-    w2_d: "Build on GraminLink's data platform to create innovative farming solutions.",
+    w2_d: "Build on AgriMate's data platform to create innovative farming solutions.",
     w3_t: "Smart Farming Researchers",
     w3_d: "Access real‑time field data and satellite imagery for agricultural research.",
     w4_t: "Agricultural Organizations",
@@ -191,7 +192,7 @@ const translations = {
     waterUsed: "Water Used",
     today: "Today",
     imp_tag: "Impact",
-    imp_title: "Why GraminLink matters",
+    imp_title: "Why AgriMate matters",
     imp_desc: "Reduce water usage, increase crop productivity, prevent crop stress, and enable data‑driven farming.",
     i1_v: "Up to 30%",
     i1_l: "Water Savings",
@@ -210,7 +211,7 @@ const translations = {
     dp_tag: "Dashboard Preview",
     dp_title: "Monitor your entire farm in one dashboard",
     dp_desc: "Soil moisture, temperature, water flow, crop health maps, and irrigation recommendations — all at a glance.",
-    bar_title: "GraminLink Dashboard",
+    bar_title: "AgriMate Dashboard",
     stressed: "Stressed",
     moderate: "Moderate",
     healthy: "Healthy",
@@ -219,15 +220,15 @@ const translations = {
     schedule_tomorrow: "Schedule tomorrow",
     zone: "Zone",
     welcome_back: "Welcome Back",
-    login_command_center: "Log in to your GraminLink command center",
+    login_command_center: "Log in to your AgriMate command center",
     phone_or_email: "Phone or Email",
     password_label: "Password",
     forgot: "Forgot?",
     login_btn: "Log In",
-    new_to_gl: "New to GraminLink?",
+    new_to_gl: "New to AgriMate?",
     create_free_acc: "Create a Free Account",
     farmer_enrollment: "Farmer Enrollment",
-    join_network: "Join the GraminLink AI precision irrigation network",
+    join_network: "Join the AgriMate AI precision irrigation network",
     full_name: "Full Name",
     phone_number: "Phone Number",
     village_loc: "Village Location",
@@ -243,7 +244,7 @@ const translations = {
     footer_l3: "Contact",
     footer_l4: "GitHub",
     footer_l5: "Privacy Policy",
-    footer_rights: "© 2026 GraminLink. All rights reserved.",
+    footer_rights: "© 2026 AgriMate. All rights reserved.",
     home_subtitle: "Monitoring your farm's vital signs in real-time",
     soil_subtitle: "Underground analytics for precision crop nutrition",
     crops_subtitle: "Manage and monitor crop development stages",
@@ -317,7 +318,7 @@ const translations = {
     p4: "जलवायु परिस्थितियां तेजी से बदलती हैं",
     sol_tag: "हमारा समाधान",
     sol_title: "डेटा द्वारा संचालित स्मार्ट सिंचाई",
-    sol_desc: "ग्रामीणलिंक किसानों को सटीक, वास्तविक समय में सिंचाई मार्गदर्शन देने के लिए IoT, सैटेलाइट इमेजरी और AI को जोड़ता है।",
+    sol_desc: "एग्रीमेट किसानों को सटीक, वास्तविक समय में सिंचाई मार्गदर्शन देने के लिए IoT, सैटेलाइट इमेजरी और AI को जोड़ता है।",
     s1_t: "IoT मिट्टी की निगरानी",
     s1_d: "IoT सेंसर वास्तविक समय में मिट्टी की नमी, तापमान और पोषक तत्वों की निगरानी करते हैं।",
     s2_t: "सैटेलाइट फसल स्वास्थ्य",
@@ -354,7 +355,7 @@ const translations = {
     w1_t: "छोटे और मध्यम किसान",
     w1_d: "किसी भी पैमाने के खेतों के लिए डिज़ाइन किए गए किफायती सटीक सिंचाई उपकरण।",
     w2_t: "एग्री-टेक स्टार्टअप",
-    w2_d: "अभिनव कृषि समाधान बनाने के लिए ग्रामीणलिंक के डेटा प्लेटफॉर्म पर निर्माण करें।",
+    w2_d: "अभिनव कृषि समाधान बनाने के लिए एग्रीमेट के डेटा प्लेटफॉर्म पर निर्माण करें।",
     w3_t: "स्मार्ट फार्मिंग शोधकर्ता",
     w3_d: "कृषि अनुसंधान के लिए वास्तविक समय के फील्ड डेटा और सैटेलाइट इमेजरी तक पहुंचें।",
     w4_t: "कृषि संगठन",
@@ -405,7 +406,7 @@ const translations = {
     today: "आज",
     imp_tag: "प्रभाव",
     imp_tag: "प्रभाव",
-    imp_title: "ग्रामीणलिंक क्यों महत्वपूर्ण है",
+    imp_title: "एग्रीमेट क्यों महत्वपूर्ण है",
     imp_desc: "पानी का उपयोग कम करें, फसल उत्पादकता बढ़ाएँ, फसल तनाव रोकें और डेटा-संचालित खेती को सक्षम करें।",
     i1_v: "30% तक",
     i1_l: "पानी की बचत",
@@ -424,7 +425,7 @@ const translations = {
     dp_tag: "डैशबोर्ड पूर्वावलोकन",
     dp_title: "एक ही डैशबोर्ड में अपने पूरे खेत की निगरानी करें",
     dp_desc: "मिट्टी की नमी, तापमान, पानी का बहाव, फसल स्वास्थ्य मानचित्र और सिंचाई सिफारिशें - सब कुछ एक नज़र में।",
-    bar_title: "ग्रामीणलिंक डैशबोर्ड",
+    bar_title: "एग्रीमेट डैशबोर्ड",
     stressed: "तनावग्रस्त",
     moderate: "मध्यम",
     healthy: "स्वस्थ",
@@ -433,15 +434,15 @@ const translations = {
     schedule_tomorrow: "कल के लिए शेड्यूल करें",
     zone: "क्षेत्र",
     welcome_back: "वापसी पर स्वागत है",
-    login_command_center: "अपने ग्रामीणलिंक कमांड सेंटर में लॉग इन करें",
+    login_command_center: "अपने एग्रीमेट कमांड सेंटर में लॉग इन करें",
     phone_or_email: "फोन या ईमेल",
     password_label: "पासवर्ड",
     forgot: "भूल गए?",
     login_btn: "लॉग इन करें",
-    new_to_gl: "ग्रामीणलिंक में नए हैं?",
+    new_to_gl: "एग्रीमेट में नए हैं?",
     create_free_acc: "मुफ़्त खाता बनाएँ",
     farmer_enrollment: "किसान नामांकन",
-    join_network: "ग्रामीणलिंक एआई सटीक सिंचाई नेटवर्क से जुड़ें",
+    join_network: "एग्रीमेट एआई सटीक सिंचाई नेटवर्क से जुड़ें",
     full_name: "पूरा नाम",
     phone_number: "फ़ोन नंबर",
     village_loc: "गाँव का स्थान",
@@ -457,7 +458,7 @@ const translations = {
     footer_l3: "संपर्क",
     footer_l4: "गिटहब",
     footer_l5: "गोपनीयता नीति",
-    footer_rights: "© 2026 ग्रामीणलिंक। सर्वाधिकार सुरक्षित।",
+    footer_rights: "© 2026 एग्रीमेट। सर्वाधिकार सुरक्षित।",
     home_subtitle: "वास्तविक समय में अपने खेत के महत्वपूर्ण संकेतों की निगरानी करें",
     soil_subtitle: "सटीक फसल पोषण के लिए भूमिगत विश्लेषण",
     crops_subtitle: "फसल विकास चरणों का प्रबंधन और निगरानी करें",
@@ -1379,7 +1380,7 @@ const translations = {
     p4: "हवामान वेगाने बदलत आहे",
     sol_tag: "आमचा उपाय",
     sol_title: "डेटाद्वारे चालणारे स्मार्ट सिंचन",
-    sol_desc: "ग्रामीणलिंक शेतकऱ्यांना अचूक, रिअल-टाइम सिंचन मार्गदर्शन देण्यासाठी IoT, सॅटेलाईट इमेजिंग आणि AI एकत्र आणते.",
+    sol_desc: "एग्रीमेट शेतकऱ्यांना अचूक, रिअल-टाइम सिंचन मार्गदर्शन देण्यासाठी IoT, सॅटेलाईट इमेजिंग आणि AI एकत्र आणते.",
     s1_t: "IoT जमिनीचे निरीक्षण",
     s1_d: "IoT सेन्सर रिअल-टाइममध्ये जमिनीतील ओलावा, तापमान आणि पोषक तत्वांचे परीक्षण करतात.",
     s2_t: "सॅटेलाईट पीक आरोग्य",
@@ -1416,7 +1417,7 @@ const translations = {
     w1_t: "लहान आणि मध्यम शेतकरी",
     w1_d: "कोणत्याही आकाराच्या शेतांसाठी डिझाइन केलेले परवडणारे अचूक सिंचन साधने.",
     w2_t: "अॅग्री-टेक स्टार्टअप्स",
-    w2_d: "नाविन्यपूर्ण शेती उपाय तयार करण्यासाठी ग्रामीणलिंकच्या डेटा प्लॅटफॉर्मवर तयार करा.",
+    w2_d: "नाविन्यपूर्ण शेती उपाय तयार करण्यासाठी एग्रीमेटच्या डेटा प्लॅटफॉर्मवर तयार करा.",
     w3_t: "स्मार्ट फार्मिंग संशोधक",
     w3_d: "कृषी संशोधनासाठी रिअल-टाइम फील्ड डेटा आणि सॅटेलाईट प्रतिमा मिळवा.",
     w4_t: "कृषी संस्था",
@@ -1465,7 +1466,7 @@ const translations = {
     waterUsed: "वापरलेले पाणी",
     today: "आज",
     imp_tag: "प्रभाव",
-    imp_title: "ग्रामीणलिंक का महत्त्वाचे आहे",
+    imp_title: "एग्रीमेट का महत्त्वाचे आहे",
     imp_desc: "पाण्याचा वापर कमी करा, उत्पादकता वाढवा आणि डेटा-आधारित शेती सक्षम करा.",
     i1_v: "३०% पर्यंत",
     i1_l: "पाणी बचत",
@@ -1484,7 +1485,7 @@ const translations = {
     dp_tag: "डॅशबोर्ड प्रिव्ह्यू",
     dp_title: "एकाच डॅशबोर्डमध्ये तुमच्या संपूर्ण शेताचे परीक्षण करा",
     dp_desc: "जमिनीतील ओलावा, तापमान, पाण्याचा प्रवाह, पीक आरोग्य नकाशे आणि सिंचन शिफारसी - सर्व काही एका दृष्टीक्षेपात.",
-    bar_title: "ग्रामीणलिंक डॅशबोर्ड",
+    bar_title: "एग्रीमेट डॅशबोर्ड",
     stressed: "ताणलेले",
     moderate: "मध्यम",
     healthy: "निरोगी",
@@ -1493,15 +1494,15 @@ const translations = {
     schedule_tomorrow: "उद्याचे नियोजन करा",
     zone: "झोन",
     welcome_back: "स्वागत आहे",
-    login_command_center: "तुमच्या ग्रामीणलिंक कमांड सेंटरमध्ये लॉग इन करा",
+    login_command_center: "तुमच्या एग्रीमेट कमांड सेंटरमध्ये लॉग इन करा",
     phone_or_email: "फोन किंवा ईमेल",
     password_label: "पासवर्ड",
     forgot: "विसरलात?",
     login_btn: "लॉग इन",
-    new_to_gl: "ग्रामीणलिंकवर नवीन आहात?",
+    new_to_gl: "एग्रीमेटवर नवीन आहात?",
     create_free_acc: "विनामूल्य खाते तयार करा",
     farmer_enrollment: "शेतकरी नोंदणी",
-    join_network: "ग्रामीणलिंक AI नेटवर्कमध्ये सामील व्हा",
+    join_network: "एग्रीमेट AI नेटवर्कमध्ये सामील व्हा",
     full_name: "पूर्ण नाव",
     phone_number: "फोन नंबर",
     village_loc: "गाव",
@@ -1517,7 +1518,7 @@ const translations = {
     footer_l3: "संपर्क",
     footer_l4: "GitHub",
     footer_l5: "गोपनीयता धोरण",
-    footer_rights: "© २०२६ ग्रामीणलिंक. सर्व हक्क राखीव.",
+    footer_rights: "© २०२६ एग्रीमेट. सर्व हक्क राखीव.",
     home_subtitle: "तुमच्या शेताच्या महत्त्वाच्या संकेतांचे निरीक्षण करा",
     soil_subtitle: "अचूक पीक पोषणासाठी जमिनीखालील विश्लेषण",
     crops_subtitle: "पीक वाढीच्या टप्प्यांचे व्यवस्थापन करा",
@@ -1981,6 +1982,21 @@ const App = () => {
   const [satelliteAlert, setSatelliteAlert] = useState(null);
   const [satMode, setSatMode] = useState('ndvi'); // 'ndvi' or 'rgb'
   const [showCallMenu, setShowCallMenu] = useState(false);
+  // Phase 6/7/9 — Agentic AI + XAI
+  const [agentDecision, setAgentDecision] = useState(null);
+  const [xaiData, setXaiData] = useState(null);
+  const [xaiLoading, setXaiLoading] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+
+  // Phase 10 — Interactive Demo Mode
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoScenario, setDemoScenario] = useState('severe_drought');
+  const [demoScenariosList, setDemoScenariosList] = useState([]);
+  const [demoAutoSimulate, setDemoAutoSimulate] = useState(false);
+  const [demoApplying, setDemoApplying] = useState(false);
+  const [demoStepCount, setDemoStepCount] = useState(0);
+  const [demoBannerInfo, setDemoBannerInfo] = useState(null);
 
   const t = (key) => {
     const lang = translations[currentLang] || translations['English'];
@@ -2112,6 +2128,164 @@ const App = () => {
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [token]);
+
+  // Phase 10: Fetch demo scenarios on component mount
+  useEffect(() => {
+    axios.get(`${API_BASE}/demo/scenarios`)
+      .then(res => {
+        if (res.data?.scenarios) {
+          setDemoScenariosList(res.data.scenarios);
+        }
+      })
+      .catch(err => console.log('Demo scenarios fetch error:', err));
+  }, []);
+
+  // Phase 10: Apply a demo scenario through real ML & Agentic AI pipeline
+  const applyDemoScenario = async (scenarioKey) => {
+    const key = scenarioKey || demoScenario;
+    setDemoScenario(key);
+    setDemoApplying(true);
+    try {
+      const userIdToUse = profile?.farm?.id || getUserId() || 1;
+      const res = await axios.post(`${API_BASE}/demo/apply`, {
+        field_id: userIdToUse,
+        scenario_key: key
+      });
+
+      if (res.data?.status === 'success') {
+        const scenarioInfo = res.data.scenario;
+        setDemoBannerInfo(scenarioInfo);
+
+        // Fetch refreshed dashboard data, historical sensor records, and explainability
+        const headers = { headers: { Authorization: `Bearer ${token}` } };
+        const [dashRes, histRes, xaiRes] = await Promise.allSettled([
+          axios.get(`${API_BASE}/dashboard/status/${userIdToUse}`, headers),
+          axios.get(`${API_BASE}/dashboard/sensor-history/${userIdToUse}`, headers),
+          axios.get(`${API_BASE}/agent/explain/${userIdToUse}`, headers),
+        ]);
+
+        if (dashRes.status === 'fulfilled' && dashRes.value.data) {
+          const d = dashRes.value.data;
+          setData(d);
+          if (d.pump_status) setPumpOn(d.pump_status === 'ON');
+        }
+
+        if (histRes.status === 'fulfilled' && Array.isArray(histRes.value.data)) {
+          setHistory(histRes.value.data.map(h => {
+            const dateStr = h.timestamp ? h.timestamp.replace(' ', 'T') : null;
+            const d = dateStr ? new Date(dateStr) : null;
+            const isValid = d && !isNaN(d.getTime());
+            return {
+              time: isValid ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--',
+              moisture: Number(h.soil_moisture) || 0,
+              temperature: Number(h.temperature) || 0,
+              date: isValid ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---'
+            };
+          }));
+        }
+
+        if (xaiRes.status === 'fulfilled' && xaiRes.value.data) {
+          setXaiData(xaiRes.value.data);
+          setAgentDecision(xaiRes.value.data);
+        }
+
+        if (res.data.farm_state) {
+          setSatelliteData({
+            ndvi_value: res.data.farm_state.ndvi,
+            health_status: res.data.farm_state.ndvi_status,
+            status: res.data.farm_state.ndvi_status,
+            image_date: new Date().toISOString().split('T')[0]
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to apply demo scenario:', err);
+    } finally {
+      setDemoApplying(false);
+    }
+  };
+
+  // Phase 10: Live simulation tick step
+  const tickDemoSimulation = async () => {
+    try {
+      const userIdToUse = profile?.farm?.id || getUserId() || 1;
+      const res = await axios.post(`${API_BASE}/demo/tick`, {
+        field_id: userIdToUse,
+        scenario_key: demoScenario,
+        is_pump_on: pumpOn,
+        step_count: demoStepCount + 1
+      });
+
+      setDemoStepCount(prev => prev + 1);
+
+      if (res.data?.current_sensor) {
+        const cs = res.data.current_sensor;
+        setData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            sensor_data: {
+              ...prev.sensor_data,
+              soil_moisture: cs.soil_moisture,
+              temperature: cs.temperature,
+              humidity: cs.humidity,
+              flow_rate: cs.water_flow
+            }
+          };
+        });
+
+        const d = new Date();
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        setHistory(prev => {
+          const updated = [...prev, { time: timeStr, moisture: cs.soil_moisture, temperature: cs.temperature, date: dateStr }];
+          return updated.slice(-25);
+        });
+
+        if (res.data.agent_decision) {
+          setAgentDecision(res.data.agent_decision);
+        }
+
+        if (res.data.xai) {
+          setXaiData(prev => ({
+            ...(prev || {}),
+            xai: res.data.xai,
+            agent_reasoning: res.data.agent_decision?.reasoning || prev?.agent_reasoning,
+            human_summary: res.data.agent_decision?.human_summary || prev?.human_summary,
+            metrics: {
+              ...(prev?.metrics || {}),
+              soil_moisture: cs.soil_moisture,
+              temperature: cs.temperature,
+            }
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error ticking demo simulation:', err);
+    }
+  };
+
+  // Phase 10: Auto-simulation stream interval
+  useEffect(() => {
+    if (!isDemoMode || !demoAutoSimulate) return;
+    const timer = setInterval(() => {
+      tickDemoSimulation();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isDemoMode, demoAutoSimulate, pumpOn, demoScenario, demoStepCount]);
+
+  // Phase 10: Toggle Demo Mode switch
+  const handleToggleDemoMode = () => {
+    const nextState = !isDemoMode;
+    setIsDemoMode(nextState);
+    if (nextState) {
+      applyDemoScenario(demoScenario);
+    } else {
+      setDemoAutoSimulate(false);
+      setDemoBannerInfo(null);
+    }
+  };
 
   const mockData = {
     farmer_name: "Raju Reddy",
@@ -2277,7 +2451,48 @@ const App = () => {
     }
   };
 
-  const renderHome = () => (
+  const getSoilMoistureBadge = (sm) => {
+    if (sm === null || sm === undefined) return { status: 'No Data', color: 'text-slate-400', bg: 'bg-slate-500/10', fill: 'bg-slate-500', pct: 0 };
+    if (sm < 20) return { status: 'Critical Low', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: 'bg-rose-500', pct: Math.min(100, Math.max(5, sm)) };
+    if (sm < 35) return { status: 'Low / Dry', color: 'text-amber-500', bg: 'bg-amber-500/10', fill: 'bg-amber-500', pct: Math.min(100, sm) };
+    if (sm <= 55) return { status: 'Optimal', color: 'text-emerald-500', bg: 'bg-emerald-500/10', fill: 'bg-emerald-500', pct: Math.min(100, sm) };
+    return { status: 'High / Wet', color: 'text-blue-500', bg: 'bg-blue-500/10', fill: 'bg-blue-500', pct: Math.min(100, sm) };
+  };
+
+  const getTemperatureBadge = (temp) => {
+    if (temp === null || temp === undefined) return { status: 'No Data', color: 'text-slate-400', bg: 'bg-slate-500/10', fill: 'bg-slate-500' };
+    if (temp < 18) return { status: 'Cool', color: 'text-blue-400', bg: 'bg-blue-400/10', fill: 'bg-blue-400' };
+    if (temp <= 32) return { status: 'Ideal', color: 'text-emerald-500', bg: 'bg-emerald-500/10', fill: 'bg-emerald-500' };
+    if (temp <= 38) return { status: 'Warm', color: 'text-amber-500', bg: 'bg-amber-500/10', fill: 'bg-amber-500' };
+    return { status: 'Heat Stress', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: 'bg-rose-500' };
+  };
+
+  const getHumidityBadge = (hum) => {
+    if (hum === null || hum === undefined) return { status: 'No Data', color: 'text-slate-400', bg: 'bg-slate-500/10', fill: 'bg-slate-500' };
+    if (hum < 30) return { status: 'Dry', color: 'text-amber-500', bg: 'bg-amber-500/10', fill: 'bg-amber-500' };
+    if (hum <= 70) return { status: 'Normal', color: 'text-cyan-500', bg: 'bg-cyan-500/10', fill: 'bg-cyan-500' };
+    return { status: 'Humid', color: 'text-blue-500', bg: 'bg-blue-500/10', fill: 'bg-blue-500' };
+  };
+
+  const renderHome = () => {
+    const sm = currentStatus.sensor_data?.soil_moisture;
+    const smBadge = getSoilMoistureBadge(sm);
+    const temp = currentStatus.sensor_data?.temperature;
+    const tempBadge = getTemperatureBadge(temp);
+    const hum = currentStatus.sensor_data?.humidity;
+    const humBadge = getHumidityBadge(hum);
+
+    const ndviVal = satelliteData?.ndvi_value ?? currentStatus.satellite_data?.ndvi_value;
+    const ndviStatus = satelliteData?.health_status || currentStatus.satellite_data?.health_status || (ndviVal > 0.6 ? 'Healthy' : ndviVal > 0.3 ? 'Moderate' : 'Crop stress');
+    const ndviColor = ndviVal > 0.6 ? 'text-emerald-500' : ndviVal > 0.3 ? 'text-yellow-500' : 'text-rose-500';
+    const ndviBg = ndviVal > 0.6 ? 'bg-emerald-500/10' : ndviVal > 0.3 ? 'bg-yellow-500/10' : 'bg-rose-500/10';
+
+    const aiAction = agentDecision?.decision || (currentStatus.ai_insights ? 'Action Recommended' : 'System Stable');
+    const aiStatus = agentDecision ? `${agentDecision.decision.toUpperCase()} • ${agentDecision.alert_level}` : (currentStatus.ai_insights ? 'Check Details' : 'Optimal');
+    const aiColor = agentDecision?.decision === 'irrigate' ? 'text-amber-500' : agentDecision?.decision === 'delay' ? 'text-blue-500' : 'text-purple-500';
+    const aiBg = agentDecision?.decision === 'irrigate' ? 'bg-amber-500/10' : agentDecision?.decision === 'delay' ? 'bg-blue-500/10' : 'bg-purple-500/10';
+
+    return (
     <div className="space-y-10">
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -2290,12 +2505,12 @@ const App = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {[
-          { icon: Droplets, label: t('soilMoisture'), value: `${currentStatus.sensor_data?.soil_moisture ?? 0}%`, status: 'Optimal', color: 'text-primary', bg: 'bg-primary/10', delay: 0.1 },
-          { icon: Thermometer, label: t('temperature'), value: `${currentStatus.sensor_data?.temperature ?? 0}°C`, status: 'Warm', color: 'text-orange-500', bg: 'bg-orange-500/10', delay: 0.2 },
-          { icon: Wind, label: t('humidity_label') || "Humidity", value: `${currentStatus.sensor_data?.humidity ?? 0}%`, status: 'Normal', color: 'text-blue-400', bg: 'bg-blue-400/10', delay: 0.25 },
-          { icon: Power, label: t('pumpStatus'), value: pumpOn ? 'ON' : 'OFF', status: pumpOn ? 'Active' : 'Standby', color: pumpOn ? 'text-green-500' : 'text-red-500', bg: pumpOn ? 'bg-green-500/10' : 'bg-red-500/10', delay: 0.3 },
-          { icon: Satellite, label: 'Sat NDVI', value: satelliteData?.ndvi_value || "0.00", status: satelliteData?.status || "Analyzing", color: satelliteData?.ndvi_value > 0.6 ? 'text-green-500' : 'text-yellow-500', bg: 'bg-indigo-500/10', delay: 0.4 },
-          { icon: Activity, label: t('aiAdvice'), value: currentStatus.ai_insights ? 'Action Recommended' : 'No Action', status: currentStatus.ai_insights ? 'Check Details' : 'System Stable', color: 'text-purple-500', bg: 'bg-purple-500/10', delay: 0.5 },
+          { icon: Droplets, label: t('soilMoisture'), value: sm != null ? `${sm}%` : '--%', status: smBadge.status, color: smBadge.color, bg: smBadge.bg, delay: 0.1 },
+          { icon: Thermometer, label: t('temperature'), value: temp != null ? `${temp}°C` : '--°C', status: tempBadge.status, color: tempBadge.color, bg: tempBadge.bg, delay: 0.2 },
+          { icon: Wind, label: t('humidity_label') || "Humidity", value: hum != null ? `${hum}%` : '--%', status: humBadge.status, color: humBadge.color, bg: humBadge.bg, delay: 0.25 },
+          { icon: Power, label: t('pumpStatus'), value: pumpOn ? 'ON' : 'OFF', status: pumpOn ? 'Active' : 'Standby', color: pumpOn ? 'text-emerald-500' : 'text-slate-400', bg: pumpOn ? 'bg-emerald-500/10' : 'bg-slate-500/10', delay: 0.3 },
+          { icon: Satellite, label: 'Sat NDVI', value: ndviVal != null ? (typeof ndviVal === 'number' ? ndviVal.toFixed(3) : ndviVal) : "0.00", status: ndviStatus, color: ndviColor, bg: ndviBg, delay: 0.4 },
+          { icon: Activity, label: t('aiAdvice'), value: aiAction, status: aiStatus, color: aiColor, bg: aiBg, delay: 0.5 },
         ].map((item, idx) => (
           <motion.div
             key={idx}
@@ -2309,7 +2524,7 @@ const App = () => {
             </div>
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{item.label}</div>
             <div className={`text-2xl font-extrabold mb-3 ${item.color}`}>{item.value}</div>
-            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.bg} ${item.color} border-${item.color}/10`}>
+            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.bg} ${item.color} border-current/20`}>
               {item.status}
             </div>
           </motion.div>
@@ -2371,7 +2586,8 @@ const App = () => {
         </motion.div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderWeather = () => (
     <div className="space-y-10">
@@ -2442,7 +2658,15 @@ const App = () => {
     </div>
   );
 
-  const renderSoilHealth = () => (
+  const renderSoilHealth = () => {
+    const sm = currentStatus.sensor_data?.soil_moisture;
+    const smBadge = getSoilMoistureBadge(sm);
+    const temp = currentStatus.sensor_data?.temperature;
+    const tempBadge = getTemperatureBadge(temp);
+    const hum = currentStatus.sensor_data?.humidity;
+    const humBadge = getHumidityBadge(hum);
+
+    return (
     <div className="space-y-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('soilHealth')}</h2>
@@ -2451,12 +2675,12 @@ const App = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {[
-          { icon: Droplets, label: t('soilMoisture'), value: `${currentStatus.sensor_data?.soil_moisture ?? 0.0}%`, status: t('optimal'), color: '#3b82f6', fill: 'bg-blue-500' },
-          { icon: Thermometer, label: t('temperature'), value: `${currentStatus.sensor_data?.temperature ?? 0.0}°C`, status: t('warm'), color: '#f59e0b', fill: 'bg-orange-500' },
-          { icon: Wind, label: t('humidity_label'), value: `${currentStatus.sensor_data?.humidity ?? 0.0}%`, status: t('normal'), color: '#10b981', fill: 'bg-green-500' },
-          { icon: Activity, label: t('waterFlow') || 'Water Flow', value: `${currentStatus.sensor_data?.flow_rate ?? 0.0} L/min`, status: pumpOn ? 'Flowing' : t('stopped'), color: pumpOn ? '#10b981' : '#6b7280', fill: pumpOn ? 'bg-green-500' : 'bg-slate-500' },
-          { icon: Gauge, label: t('waterUsed') || 'Water Used', value: `0.00 L`, status: t('today') || 'Today', color: '#6366f1', fill: 'bg-indigo-500' },
-          { icon: Power, label: t('pumpStatus'), value: pumpOn ? 'ON' : 'OFF', status: pumpOn ? 'Active' : 'Standby', color: pumpOn ? '#10b981' : '#ef4444', fill: pumpOn ? 'bg-green-500' : 'bg-red-500' },
+          { icon: Droplets, label: t('soilMoisture'), value: sm != null ? `${sm}%` : '--%', status: smBadge.status, color: smBadge.color, fill: smBadge.fill, pct: smBadge.pct },
+          { icon: Thermometer, label: t('temperature'), value: temp != null ? `${temp}°C` : '--°C', status: tempBadge.status, color: tempBadge.color, fill: tempBadge.fill, pct: Math.min(100, (temp || 0) * 2) },
+          { icon: Wind, label: t('humidity_label'), value: hum != null ? `${hum}%` : '--%', status: humBadge.status, color: humBadge.color, fill: humBadge.fill, pct: Math.min(100, hum || 0) },
+          { icon: Activity, label: t('waterFlow') || 'Water Flow', value: `${currentStatus.sensor_data?.flow_rate ?? 0.0} L/min`, status: pumpOn ? 'Flowing' : t('stopped'), color: pumpOn ? 'text-emerald-500' : 'text-slate-400', fill: pumpOn ? 'bg-emerald-500' : 'bg-slate-500', pct: pumpOn ? 75 : 0 },
+          { icon: Gauge, label: t('waterUsed') || 'Water Used', value: `0.00 L`, status: t('today') || 'Today', color: 'text-indigo-500', fill: 'bg-indigo-500', pct: 20 },
+          { icon: Power, label: t('pumpStatus'), value: pumpOn ? 'ON' : 'OFF', status: pumpOn ? 'Active' : 'Standby', color: pumpOn ? 'text-emerald-500' : 'text-slate-400', fill: pumpOn ? 'bg-emerald-500' : 'bg-slate-500', pct: pumpOn ? 100 : 0 },
         ].map((item, i) => (
           <motion.div
             key={i}
@@ -2466,14 +2690,14 @@ const App = () => {
             className="bg-card border border-border p-6 rounded-3xl"
           >
             <div className="flex items-center gap-3 mb-6">
-              <item.icon size={20} color={item.color} />
+              <item.icon size={20} className={item.color} />
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
             </div>
-            <div className="text-3xl font-black mb-4">{item.value}</div>
+            <div className={`text-3xl font-black mb-4 ${item.color}`}>{item.value}</div>
             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden mb-4">
-              <div className={`h-full ${item.fill}`} style={{ width: '60%' }}></div>
+              <div className={`h-full ${item.fill}`} style={{ width: `${item.pct}%` }}></div>
             </div>
-            <div className="text-[11px] font-bold uppercase tracking-widest" style={{ color: item.color }}>{item.status}</div>
+            <div className={`text-[11px] font-bold uppercase tracking-widest ${item.color}`}>{item.status}</div>
           </motion.div>
         ))}
       </div>
@@ -2532,7 +2756,8 @@ const App = () => {
         </div>
       </motion.div>
     </div>
-  );
+    );
+  };
 
   const renderCrops = () => (
     <div className="space-y-10">
@@ -2576,10 +2801,10 @@ const App = () => {
 
           <div className="grid grid-cols-2 gap-8">
             {[
-              { label: 'Village', value: currentStatus.farmer_village || "Rampur" },
-              { label: 'Field Area', value: `${currentStatus.field_info?.area || 2.5} Hectares` },
-              { label: 'Crop Variety', value: 'Traditional Long Grain' },
-              { label: 'Soil Type', value: 'Alluvial Loam' },
+              { label: 'Village', value: currentStatus.farmer_village || "Nizampet" },
+              { label: 'Field Area', value: `${currentStatus.field_info?.area || 2.5} Acres` },
+              { label: 'Crop Variety', value: currentStatus.field_info?.crop || 'Wheat' },
+              { label: 'Soil Type', value: 'Loamy Soil' },
             ].map((field, i) => (
               <div key={i} className="space-y-1">
                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{field.label}</div>
@@ -2592,11 +2817,228 @@ const App = () => {
     </div>
   );
 
+  // ── XAI fetch — runs when the schedule tab becomes active ──────────────────
+  const fetchAgentExplanation = async () => {
+    const fieldId = currentStatus?.field_id || data?.field_id || 1;
+    if (!fieldId || !token) return;
+    setXaiLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/agent/explain/${fieldId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setXaiData(res.data);
+      setAgentDecision(res.data);
+      setFeedbackSent(false);
+    } catch (err) {
+      console.warn('XAI fetch failed:', err?.response?.data || err.message);
+    } finally {
+      setXaiLoading(false);
+    }
+  };
+
+  const submitFeedback = async (response) => {
+    if (!xaiData || feedbackSent || feedbackSubmitting) return;
+    const fieldId = currentStatus?.field_id || data?.field_id || 1;
+    setFeedbackSubmitting(true);
+    try {
+      await axios.post(`${API_BASE}/agent/feedback`, {
+        field_id: fieldId,
+        ai_decision: xaiData?.agent_reasoning ? 'irrigate' : 'monitor',
+        recommended_water_mm: xaiData?.ml_prediction?.water_requirement_mm || 0,
+        ai_confidence: xaiData?.ml_prediction?.confidence || 0,
+        agent_reasoning: xaiData?.agent_reasoning || [],
+        farmer_response: response,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setFeedbackSent(true);
+    } catch (err) {
+      console.warn('Feedback submit failed:', err?.response?.data || err.message);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
+  const alertColors = {
+    none:     { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+    low:      { bg: 'bg-blue-500/10',    border: 'border-blue-500/30',    text: 'text-blue-400',    dot: 'bg-blue-400'    },
+    medium:   { bg: 'bg-yellow-500/10',  border: 'border-yellow-500/30',  text: 'text-yellow-400',  dot: 'bg-yellow-400'  },
+    high:     { bg: 'bg-orange-500/10',  border: 'border-orange-500/30',  text: 'text-orange-400',  dot: 'bg-orange-400'  },
+    critical: { bg: 'bg-red-500/10',     border: 'border-red-500/30',     text: 'text-red-400',     dot: 'bg-red-400'     },
+  };
+
   const renderSchedule = () => (
     <div className="space-y-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{t('schedule')}</h2>
         <p className="text-muted-foreground font-medium">AI-driven irrigation planning and historical logs</p>
+      </motion.div>
+
+      {/* ── Phase 6/7: Agentic AI Decision + XAI Card ─────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className="bg-card border border-border rounded-[2rem] overflow-hidden shadow-xl">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                <Activity className="text-violet-400" size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Why this recommendation?</h3>
+                <p className="text-[11px] text-muted-foreground">Explainable AI — reasoning over sensor + satellite + weather data</p>
+              </div>
+            </div>
+            <button
+              onClick={fetchAgentExplanation}
+              disabled={xaiLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded-xl text-xs font-bold border border-violet-500/20 transition-all disabled:opacity-50"
+            >
+              {xaiLoading ? <Loader2 size={13} className="animate-spin" /> : <TrendingUp size={13} />}
+              {xaiLoading ? 'Analyzing…' : 'Refresh Analysis'}
+            </button>
+          </div>
+
+          {xaiLoading && (
+            <div className="p-12 flex flex-col items-center gap-4 text-muted-foreground">
+              <Loader2 size={32} className="animate-spin text-violet-400" />
+              <p className="text-sm font-medium">Fusing IoT + Satellite + Weather + ML data…</p>
+            </div>
+          )}
+
+          {!xaiLoading && !xaiData && (
+            <div className="p-12 flex flex-col items-center gap-4 text-muted-foreground">
+              <Activity size={36} className="opacity-20" />
+              <p className="text-sm font-medium">Click <strong>Refresh Analysis</strong> to get an AI explanation</p>
+            </div>
+          )}
+
+          {!xaiLoading && xaiData && (() => {
+            const alert = xaiData.alert_level || 'none';
+            const colors = alertColors[alert] || alertColors.none;
+            const contributions = xaiData.xai?.contributions || [];
+            const maxImp = Math.max(...contributions.map(c => c.importance), 0.001);
+            const metrics = xaiData.metrics || {};
+            return (
+              <div className="p-6 space-y-6">
+                {/* Decision banner */}
+                <div className={`flex items-center gap-4 p-4 rounded-2xl border ${colors.bg} ${colors.border}`}>
+                  <span className={`w-3 h-3 rounded-full animate-pulse ${colors.dot}`} />
+                  <div className="flex-1">
+                    <div className={`text-xs font-bold uppercase tracking-widest ${colors.text} mb-0.5`}>
+                      Alert level: {alert}
+                    </div>
+                    <div className="font-semibold text-sm text-foreground">
+                      {xaiData.human_summary || 'Analysis complete'}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Confidence</div>
+                    <div className="text-xl font-black text-foreground">{metrics.confidence ?? '--'}%</div>
+                  </div>
+                </div>
+
+                {/* Key metrics row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Soil Moisture', value: `${metrics.soil_moisture?.toFixed(1) ?? '--'}%`, sub: `Optimal ${metrics.optimal_moisture?.toFixed(0) ?? '--'}%` },
+                    { label: 'NDVI', value: metrics.ndvi?.toFixed(3) ?? '--', sub: metrics.ndvi_status ?? '' },
+                    { label: 'Rain Prob.', value: `${metrics.rain_probability?.toFixed(0) ?? '--'}%`, sub: 'Next 24h' },
+                    { label: 'Water Stress', value: metrics.water_stress_index?.toFixed(2) ?? '--', sub: '/1.0 index' },
+                  ].map((m, i) => (
+                    <div key={i} className="bg-secondary/40 rounded-2xl p-4 border border-border/50">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{m.label}</div>
+                      <div className="text-2xl font-black text-foreground">{m.value}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Feature importance bars (XAI) */}
+                {contributions.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Feature Importance (XAI)</div>
+                    <div className="space-y-2.5">
+                      {contributions.slice(0, 6).map((c, i) => {
+                        const pct = Math.round((c.importance / maxImp) * 100);
+                        const isPos = c.direction === 'increases_need';
+                        return (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="w-28 text-[11px] font-semibold text-muted-foreground truncate text-right">
+                              {c.feature?.replace(/_/g, ' ')}
+                            </div>
+                            <div className="flex-1 h-5 bg-secondary/50 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${isPos ? 'bg-orange-400' : 'bg-emerald-400'}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <div className="text-[11px] font-bold w-12 text-right">{(c.importance * 100).toFixed(1)}%</div>
+                            <div className={`text-[9px] w-12 font-bold uppercase tracking-wider ${isPos ? 'text-orange-400' : 'text-emerald-400'}`}>
+                              {isPos ? '▲ need' : '▼ no'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2 italic">
+                      Orange = increases irrigation need &nbsp;·&nbsp; Green = reduces need
+                    </p>
+                  </div>
+                )}
+
+                {/* Agent reasoning steps */}
+                {(xaiData.agent_reasoning || []).length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">AI Reasoning Steps</div>
+                    <ol className="space-y-2">
+                      {xaiData.agent_reasoning.map((step, i) => (
+                        <li key={i} className="flex gap-3 items-start">
+                          <span className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-400 text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i+1}</span>
+                          <span className="text-sm text-muted-foreground leading-snug">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Data sources */}
+                {(xaiData.data_sources || []).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mr-1">Sources:</span>
+                    {xaiData.data_sources.map((s, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-secondary/50 border border-border/50 rounded-full text-[10px] font-semibold text-muted-foreground">{s}</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Phase 9: Farmer Feedback */}
+                <div className="border-t border-border pt-4">
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Did this recommendation help?</div>
+                  {feedbackSent ? (
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
+                      <span className="w-5 h-5 rounded-full bg-emerald-400/10 flex items-center justify-center text-xs">✓</span>
+                      Feedback recorded — thank you!
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      {[['accepted','✓ Yes, I followed it','bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'],
+                        ['modified','~ I modified it','bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20'],
+                        ['rejected','✗ I ignored it','bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20']
+                      ].map(([val, label, cls]) => (
+                        <button
+                          key={val}
+                          disabled={feedbackSubmitting}
+                          onClick={() => submitFeedback(val)}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-50 ${cls}`}
+                        >
+                          {feedbackSubmitting ? '…' : label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </motion.div>
 
       <motion.div
@@ -2851,7 +3293,7 @@ const App = () => {
             <Droplets size={24} color="white" />
           </div>
           <div>
-            <h1 className="text-xl font-display font-extrabold tracking-tight text-foreground leading-none">GraminLink</h1>
+            <h1 className="text-xl font-display font-extrabold tracking-tight text-foreground leading-none">AgriMate</h1>
             <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-0.5">Precision AI</p>
           </div>
         </div>
@@ -2897,6 +3339,23 @@ const App = () => {
 
           <div className="h-6 w-px bg-border hidden sm:block mx-1" />
 
+          {/* Phase 10: Demo Mode Switch */}
+          <button
+            onClick={handleToggleDemoMode}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all font-extrabold text-[11px] uppercase tracking-wider border shadow-md active:scale-95 ${
+              isDemoMode
+                ? 'bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-amber-500/50 text-amber-400 shadow-amber-500/10 ring-2 ring-amber-500/20'
+                : 'bg-secondary/60 hover:bg-secondary border-border text-muted-foreground hover:text-foreground'
+            }`}
+            title="Toggle realistic mock telemetry for demonstrations without physical sensors"
+          >
+            <FlaskConical size={14} className={isDemoMode ? 'text-amber-400 animate-bounce' : 'text-muted-foreground'} />
+            <span className="hidden xs:inline">Demo Mode</span>
+            <div className={`w-2 h-2 rounded-full ${isDemoMode ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-muted-foreground/40'}`} />
+          </button>
+
+          <div className="h-6 w-px bg-border hidden sm:block mx-1" />
+
           <button
             onClick={() => setShowCallMenu(true)}
             disabled={calling}
@@ -2914,6 +3373,100 @@ const App = () => {
           </button>
         </div>
       </header>
+
+      {/* ── Phase 10: Interactive Demo Mode Command Bar ──────────────────────── */}
+      <AnimatePresence>
+        {isDemoMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-gradient-to-r from-amber-950/40 via-purple-950/40 to-slate-900/60 border-b border-amber-500/30 px-6 py-3 sticky top-[73px] z-45 backdrop-blur-lg overflow-hidden"
+          >
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Zap size={16} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-400">Live Demo Controller</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                      Full ML + Agentic AI + XAI
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-none mt-0.5">
+                    Select a scenario or stream live ticks to demonstrate data fusion & AI reasoning.
+                  </p>
+                </div>
+              </div>
+
+              {/* Scenario Selector Buttons */}
+              <div className="flex items-center flex-wrap gap-2">
+                {[
+                  { key: 'severe_drought', label: '🚨 Severe Drought', desc: '18.2% moisture, 37°C, 0.28 NDVI → Triggers IRRIGATE_NOW' },
+                  { key: 'incoming_rain', label: '🌧️ Rain Forecasted', desc: '26.5% moisture + 85% rain chance → Triggers DELAY' },
+                  { key: 'optimal_post_irrigation', label: '🌿 Optimal Field', desc: '44.5% moisture, 0.74 NDVI → Triggers MONITOR' },
+                ].map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => applyDemoScenario(s.key)}
+                    disabled={demoApplying}
+                    title={s.desc}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 ${
+                      demoScenario === s.key
+                        ? 'bg-amber-500 text-black font-black border-amber-400 shadow-lg shadow-amber-500/20'
+                        : 'bg-secondary/60 hover:bg-secondary text-foreground border-border/80'
+                    }`}
+                  >
+                    {demoApplying && demoScenario === s.key ? <Loader2 size={12} className="animate-spin" /> : null}
+                    {s.label}
+                  </button>
+                ))}
+
+                <div className="h-5 w-px bg-border/80 hidden sm:block mx-1" />
+
+                {/* Auto-Simulate Toggle */}
+                <button
+                  onClick={() => setDemoAutoSimulate(!demoAutoSimulate)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 ${
+                    demoAutoSimulate
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                      : 'bg-secondary/60 hover:bg-secondary text-muted-foreground border-border/80'
+                  }`}
+                  title="Automatically tick the sensor clock every 4s to simulate live changing field dynamics"
+                >
+                  {demoAutoSimulate ? <Pause size={12} /> : <Play size={12} />}
+                  <span>{demoAutoSimulate ? 'Streaming Live' : 'Auto Stream'}</span>
+                </button>
+
+                {/* Manual Step Tick Button */}
+                <button
+                  onClick={tickDemoSimulation}
+                  disabled={demoAutoSimulate}
+                  className="px-3 py-1.5 bg-secondary/60 hover:bg-secondary border border-border/80 rounded-xl text-xs font-bold text-foreground transition-all flex items-center gap-1.5 disabled:opacity-40 active:scale-95"
+                  title="Advance 1 simulation tick"
+                >
+                  <RefreshCw size={12} />
+                  <span>Tick Step</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Scenario explanation banner */}
+            {demoBannerInfo && (
+              <div className="max-w-7xl mx-auto mt-2.5 pt-2 border-t border-amber-500/10 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span className="font-medium text-amber-200/90">
+                  <strong className="text-amber-400">{demoBannerInfo.title}:</strong> {demoBannerInfo.description}
+                </span>
+                <span className="hidden md:inline font-mono text-[10px] text-amber-400/80 bg-black/40 px-2 py-0.5 rounded border border-amber-500/20">
+                  Expected AI Decision: {demoBannerInfo.expected_action}
+                </span>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <nav className="flex items-center justify-center gap-1 p-2 bg-card/50 border-b border-border sticky top-[73px] z-40 backdrop-blur-md">
         {[

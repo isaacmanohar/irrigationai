@@ -3,15 +3,53 @@ import pandas as pd
 import os
 import logging
 import numpy as np
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Get the directory of this file and construct paths relative to it
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '../../../..'))
+# ─── Robust path resolution ─────────────────────────────────────────────────
+# This file lives at: backend/app/services/prediction.py
+# Models live at:     <project_root>/ml_model/saved_models/<name>.pkl
+# Probe several candidate roots so the backend works regardless of where
+# uvicorn/gunicorn is invoked from (project root OR backend/ directory).
 
-IRRIGATION_MODEL_PATH = os.path.join(PROJECT_ROOT, 'iot/ml_model/irrigation_model(1).pkl')
-WATER_REQUIREMENT_MODEL_PATH = os.path.join(PROJECT_ROOT, 'iot/ml_model/water_requirement_model.pkl')
+_THIS_FILE = os.path.abspath(__file__)          # …/backend/app/services/prediction.py
+_BACKEND_DIR = os.path.dirname(              # …/backend
+    os.path.dirname(os.path.dirname(_THIS_FILE))
+)
+_PROJECT_ROOT = os.path.dirname(_BACKEND_DIR)   # …/iot  (git root)
+
+def _probe_model_path(rel_candidates: list) -> Optional[str]:
+    """Return the first existing path from relative candidates against several roots."""
+    search_roots = [_PROJECT_ROOT, _BACKEND_DIR, os.getcwd()]
+    for root in search_roots:
+        for candidate in rel_candidates:
+            full = os.path.normpath(os.path.join(root, candidate))
+            if os.path.exists(full):
+                logger.info(f"Model found at: {full}")
+                return full
+    logger.warning(
+        f"Model not found. Searched candidates {rel_candidates} "
+        f"under roots {search_roots}"
+    )
+    return None
+
+
+IRRIGATION_MODEL_PATH = _probe_model_path([
+    "ml_model/saved_models/irrigation_model.pkl",
+    "ml_model/saved_models/irrigation_model(1).pkl",
+    "iot/ml_model/saved_models/irrigation_model.pkl",
+    "iot/ml_model/saved_models/irrigation_model(1).pkl",
+    "iot/ml_model/irrigation_model(1).pkl",
+    "saved_models/irrigation_model.pkl",
+])
+
+WATER_REQUIREMENT_MODEL_PATH = _probe_model_path([
+    "ml_model/saved_models/water_requirement_model.pkl",
+    "iot/ml_model/saved_models/water_requirement_model.pkl",
+    "iot/ml_model/water_requirement_model.pkl",
+    "saved_models/water_requirement_model.pkl",
+])
 
 class IrrigationPredictor:
     def __init__(self):
@@ -20,21 +58,21 @@ class IrrigationPredictor:
         
         # Load irrigation model
         try:
-            if os.path.exists(IRRIGATION_MODEL_PATH):
+            if IRRIGATION_MODEL_PATH and os.path.exists(IRRIGATION_MODEL_PATH):
                 self.irrigation_model = joblib.load(IRRIGATION_MODEL_PATH)
-                logger.info(f"Irrigation model loaded successfully")
+                logger.info(f"Irrigation model loaded successfully from {IRRIGATION_MODEL_PATH}")
             else:
-                logger.warning(f"Irrigation model not found at {IRRIGATION_MODEL_PATH}")
+                logger.warning("Irrigation model not loaded — falling back to rule-based decisions")
         except Exception as e:
             logger.error(f"Error loading irrigation model: {str(e)}")
         
         # Load water requirement model
         try:
-            if os.path.exists(WATER_REQUIREMENT_MODEL_PATH):
+            if WATER_REQUIREMENT_MODEL_PATH and os.path.exists(WATER_REQUIREMENT_MODEL_PATH):
                 self.water_requirement_model = joblib.load(WATER_REQUIREMENT_MODEL_PATH)
-                logger.info(f"Water requirement model loaded successfully")
+                logger.info(f"Water requirement model loaded successfully from {WATER_REQUIREMENT_MODEL_PATH}")
             else:
-                logger.warning(f"Water requirement model not found at {WATER_REQUIREMENT_MODEL_PATH}")
+                logger.warning("Water requirement model not loaded — will return zero estimates")
         except Exception as e:
             logger.error(f"Error loading water requirement model: {str(e)}")
 
@@ -197,5 +235,194 @@ class IrrigationPredictor:
             "soil_moisture": soil_moisture,
             "confidence": irrigation_result.get("confidence", 0)
         }
+
+    def predict_from_farm_state(self, farm_state) -> dict:
+        """
+        Phase 5 — Multi-source fused prediction.
+        Takes a fully assembled FarmState and applies the Decision Engine:
+          1. ML model prediction on fused features
+          2. Rain-delay override (high probability in near-term forecast)
+          3. NDVI stress override (severe stress → force irrigate)
+          4. Over-saturation safety check
+        Returns a structured decision dict.
+        """
+        features = farm_state.to_ml_features()
+
+        irrigation_result = self.predict_irrigation_need(features)
+        water_mm = self.predict_water_requirement(features)
+        needs_irrigation: bool = irrigation_result.get("needs_irrigation", False)
+        confidence: float = irrigation_result.get("confidence", 0.5)
+
+        # ── Rain-delay override ──────────────────────────────────────────────
+        # If rain probability is high OR significant rain expected within 2 days,
+        # delay irrigation to avoid waste.
+        rain_delay = False
+        rain_reason = ""
+        if farm_state.rain_probability >= 65:
+            rain_delay = True
+            rain_reason = f"Rain probability is high ({farm_state.rain_probability:.0f}%) — delaying."
+        elif any(r >= 8.0 for r in farm_state.forecast_rain_7d[:2]):
+            rain_delay = True
+            rain_reason = "Significant rain expected within 48 hours — delaying."
+
+        # ── NDVI stress override ─────────────────────────────────────────────
+        # Severe crop stress always overrides rain delay if soil is also dry.
+        ndvi_force = False
+        if farm_state.ndvi < 0.25 and farm_state.soil_moisture < farm_state.optimal_moisture:
+            ndvi_force = True
+            rain_delay = False          # critical stress outweighs rain delay
+
+        # ── Over-saturation safety ───────────────────────────────────────────
+        if farm_state.soil_moisture >= farm_state.optimal_moisture + 20:
+            needs_irrigation = False
+            water_mm = 0.0
+            rain_delay = False
+
+        # ── Apply overrides ──────────────────────────────────────────────────
+        if rain_delay:
+            final_decision = "delay"
+            final_water_mm = 0.0
+            recommendation = "Delay — " + rain_reason
+        elif ndvi_force:
+            final_decision = "irrigate"
+            final_water_mm = round(water_mm * 1.2, 1)   # extra 20% for stress
+            recommendation = f"Critical NDVI stress ({farm_state.ndvi:.2f}) — irrigate immediately."
+        elif needs_irrigation:
+            final_decision = "irrigate"
+            final_water_mm = round(water_mm, 1)
+            recommendation = f"Irrigation needed — apply {water_mm:.1f}mm."
+        else:
+            final_decision = "skip"
+            final_water_mm = 0.0
+            recommendation = "No irrigation needed — conditions adequate."
+
+        logger.info(
+            f"FusedPrediction: field={farm_state.field_id} "
+            f"decision={final_decision} water={final_water_mm}mm "
+            f"rain_delay={rain_delay} ndvi_force={ndvi_force}"
+        )
+
+        return {
+            "decision": final_decision,
+            "needs_irrigation": final_decision == "irrigate",
+            "recommended_water_mm": final_water_mm,
+            "recommendation": recommendation,
+            "confidence": round(confidence, 3),
+            "rain_delay": rain_delay,
+            "ndvi_force_irrigate": ndvi_force,
+            "ml_prediction": irrigation_result.get("prediction", "Unknown"),
+            "ml_confidence": confidence,
+            "water_stress_index": farm_state.water_stress_index,
+            "sources_used": farm_state.sources_used,
+        }
+
+    def explain_prediction(self, features: dict) -> dict:
+        """
+        Phase 7 — XAI: Return feature importances ranked by contribution.
+        Uses the RandomForest's feature_importances_ (model-global, not per-sample).
+        Returns both machine-readable scores and a human-readable explanation.
+        """
+        FEATURE_LABELS = {
+            "Soil_Moisture": "Soil moisture",
+            "NDVI": "Crop health (NDVI)",
+            "Temperature_C": "Temperature",
+            "Rainfall_mm": "Rainfall",
+            "Humidity": "Humidity",
+            "Wind_Speed_kmh": "Wind speed",
+            "Previous_Irrigation_mm": "Previous irrigation",
+            "Crop_Growth_Stage": "Crop growth stage",
+            "Crop_Type": "Crop type",
+            "Soil_Type": "Soil type",
+            "Sunlight_Hours": "Sunlight hours",
+            "Season": "Season",
+        }
+
+        if not self.irrigation_model:
+            # Rule-based fallback when model isn't loaded
+            moisture = features.get("soil_moisture", 40)
+            ndvi = features.get("ndvi", 0.5)
+            temp = features.get("temperature", 25)
+            rain = features.get("rainfall_mm", 0)
+
+            contributions = [
+                {"feature": "Soil moisture", "importance": 0.40, "value": f"{moisture}%",
+                 "direction": "increases" if moisture < 40 else "reduces"},
+                {"feature": "Crop health (NDVI)", "importance": 0.26, "value": str(ndvi),
+                 "direction": "increases" if ndvi < 0.5 else "reduces"},
+                {"feature": "Temperature", "importance": 0.18, "value": f"{temp}°C",
+                 "direction": "increases" if temp > 30 else "neutral"},
+                {"feature": "Rainfall", "importance": 0.11, "value": f"{rain}mm",
+                 "direction": "reduces" if rain > 2 else "neutral"},
+                {"feature": "Humidity", "importance": 0.05, "value": f"{features.get('humidity', 60)}%",
+                 "direction": "neutral"},
+            ]
+            top2 = contributions[:2]
+            human = (
+                f"Irrigation need driven mainly by {top2[0]['feature'].lower()} "
+                f"({top2[0]['value']}) and {top2[1]['feature'].lower()} ({top2[1]['value']})."
+            )
+            return {
+                "method": "rule_based_fallback",
+                "contributions": contributions,
+                "human_explanation": human,
+            }
+
+        try:
+            X, mapped = self._prepare_features(features)
+            importances = self.irrigation_model.feature_importances_
+            feature_names = list(X.columns)
+
+            # Pair names with importances, sort descending
+            pairs = sorted(
+                zip(feature_names, importances), key=lambda x: x[1], reverse=True
+            )
+
+            # Map current feature values for readable output
+            value_map = {k: mapped.get(k, "N/A") for k in feature_names}
+
+            contributions = []
+            for fname, imp in pairs:
+                val = value_map.get(fname, "N/A")
+                label = FEATURE_LABELS.get(fname, fname)
+                # Determine direction heuristic
+                if fname == "Soil_Moisture":
+                    direction = "increases need" if val < 40 else "reduces need"
+                elif fname == "NDVI":
+                    direction = "increases need" if val < 0.5 else "reduces need"
+                elif fname == "Rainfall_mm":
+                    direction = "reduces need" if val > 2 else "neutral"
+                elif fname == "Temperature_C":
+                    direction = "increases need" if val > 30 else "neutral"
+                else:
+                    direction = "contributing factor"
+
+                contributions.append({
+                    "feature": label,
+                    "importance": round(float(imp), 4),
+                    "value": val if isinstance(val, str) else round(float(val), 2),
+                    "direction": direction,
+                })
+
+            # Human-readable summary from top 2 factors
+            top = contributions[:2]
+            human = (
+                f"The main drivers were {top[0]['feature'].lower()} "
+                f"({top[0]['value']}, {top[0]['direction']}) and "
+                f"{top[1]['feature'].lower()} ({top[1]['value']}, {top[1]['direction']})."
+            )
+
+            return {
+                "method": "random_forest_feature_importance",
+                "contributions": contributions,
+                "human_explanation": human,
+            }
+
+        except Exception as e:
+            logger.error(f"Error in explain_prediction: {e}")
+            return {
+                "method": "error",
+                "contributions": [],
+                "human_explanation": "Explanation unavailable.",
+            }
 
 predictor = IrrigationPredictor()

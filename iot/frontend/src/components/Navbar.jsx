@@ -52,7 +52,7 @@ const Navbar = ({ onLogin, onGetStarted, currentLang, changeLanguage, t }) => {
           className="font-display text-xl font-extrabold tracking-tight text-primary cursor-pointer"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-          GraminLink
+          AgriMate
         </span>
 
         {/* Desktop */}

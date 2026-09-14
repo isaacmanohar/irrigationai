@@ -46,26 +46,24 @@ async def receive_sensor_data(data: SensorDataCreate, db: Session = Depends(get_
     }
     
     irrigation_need = predictor.predict_irrigation_need(prediction_input)
-    
+    needs_irrigation: bool = irrigation_need.get("needs_irrigation", False)
+
     # 5. Safety Checks (Over-irrigation)
     threshold = field.optimal_moisture_level if field else 40.0
     pump_action = "STAY_OFF"
-    
+
     if data.soil_moisture >= threshold + 10:
+        # Soil already saturated — force pump off
         pump_action = "FORCE_OFF"
-        # Trigger alert if over-irrigating
-        if farmer:
-            # twilio_service.make_advisory_call(...) 
-            pass
-    elif irrigation_need in ["Medium", "High"] and data.soil_moisture < threshold:
+    elif needs_irrigation and data.soil_moisture < threshold:
         pump_action = "START"
-    
+
     db.commit()
-    
+
     return {
         "status": "success",
         "irrigation_recommendation": irrigation_need,
-        "pump_action": pump_action
+        "pump_action": pump_action,
     }
 
 @router.post("/control")

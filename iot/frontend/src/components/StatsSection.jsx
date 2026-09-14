@@ -4,7 +4,7 @@ const stats = [
   {
     icon: Wifi,
     title: "Seamlessly Connected",
-    desc: "GraminLink integrates with leading farm equipment and IoT sensors for effortless data flow.",
+    desc: "AgriMate integrates with leading farm equipment and IoT sensors for effortless data flow.",
   },
   {
     icon: Settings,
@@ -14,7 +14,7 @@ const stats = [
   {
     icon: TrendingUp,
     title: "Proven Yield Gains",
-    desc: "Farmers using GraminLink's crop advisory tools report measurable improvements in yield and input efficiency.",
+    desc: "Farmers using AgriMate's crop advisory tools report measurable improvements in yield and input efficiency.",
   },
 ];
 
