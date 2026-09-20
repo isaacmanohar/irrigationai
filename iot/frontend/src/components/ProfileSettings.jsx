@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     User, Mail, Phone, Globe, Camera, MapPin, Ruler,
     Navigation, Lock, LogOut, Trash2, Save, Map as MapIcon,
-    Check, AlertCircle, Loader2, ChevronRight, Languages, Shield
+    Check, AlertCircle, Loader2, ChevronRight, Languages, Shield,
+    Sun, Moon, Palette, Crosshair, Compass, Edit3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useTheme } from '../context/ThemeContext';
 
 // shadcn-like components (assuming they are available in the project)
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -20,10 +22,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
 const ProfileSettings = ({ token, onLogout, API_BASE: propApiBase, onProfileUpdate }) => {
+    const { theme, setTheme, isDark } = useTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [detectingGps, setDetectingGps] = useState(false);
     const [profileData, setProfileData] = useState(null);
-    const [showMap, setShowMap] = useState(false);
+    const [showMap, setShowMap] = useState(true);
     const [passwordData, setPasswordData] = useState({
         current: '',
         new: '',
@@ -127,17 +131,68 @@ const ProfileSettings = ({ token, onLogout, API_BASE: propApiBase, onProfileUpda
         }
     };
 
-    const LocationMarker = () => {
-        useMapEvents({
-            click(e) {
+    const handleGetCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported by your browser");
+            return;
+        }
+        setDetectingGps(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = parseFloat(position.coords.latitude.toFixed(6));
+                const lng = parseFloat(position.coords.longitude.toFixed(6));
                 setProfileData({
                     ...profileData,
-                    farm: { ...profileData.farm, latitude: e.latlng.lat, longitude: e.latlng.lng }
+                    farm: { ...profileData.farm, latitude: lat, longitude: lng }
+                });
+                setDetectingGps(false);
+                toast.success(`GPS Location detected: ${lat}, ${lng}`);
+            },
+            (error) => {
+                setDetectingGps(false);
+                toast.error("Failed to retrieve GPS location: " + error.message);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+    const LocationMarker = () => {
+        const map = useMapEvents({
+            click(e) {
+                const lat = parseFloat(e.latlng.lat.toFixed(6));
+                const lng = parseFloat(e.latlng.lng.toFixed(6));
+                setProfileData({
+                    ...profileData,
+                    farm: { ...profileData.farm, latitude: lat, longitude: lng }
                 });
             },
         });
-        return profileData.farm.latitude ? (
-            <Marker position={[profileData.farm.latitude, profileData.farm.longitude]} />
+
+        useEffect(() => {
+            if (profileData?.farm?.latitude && profileData?.farm?.longitude) {
+                map.flyTo([profileData.farm.latitude, profileData.farm.longitude], map.getZoom());
+            }
+        }, [profileData?.farm?.latitude, profileData?.farm?.longitude]);
+
+        return profileData?.farm?.latitude ? (
+            <Marker
+                position={[profileData.farm.latitude, profileData.farm.longitude]}
+                draggable={true}
+                eventHandlers={{
+                    dragend: (e) => {
+                        const latlng = e.target.getLatLng();
+                        setProfileData({
+                            ...profileData,
+                            farm: {
+                                ...profileData.farm,
+                                latitude: parseFloat(latlng.lat.toFixed(6)),
+                                longitude: parseFloat(latlng.lng.toFixed(6))
+                            }
+                        });
+                        toast.info(`Pin moved to: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`);
+                    }
+                }}
+            />
         ) : null;
     };
 
@@ -318,52 +373,97 @@ const ProfileSettings = ({ token, onLogout, API_BASE: propApiBase, onProfileUpda
                                 />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Latitude</Label>
-                                <Input
-                                    className="h-12 bg-secondary/30 border-emerald-500/10 rounded-xl font-bold opacity-70"
-                                    value={profileData.farm.latitude?.toFixed(6) || ''}
-                                    readOnly
-                                />
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Latitude</Label>
+                                    <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Editable</span>
+                                </div>
+                                <div className="relative">
+                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/70" />
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        className="pl-12 h-12 bg-secondary/30 border-emerald-500/20 focus:border-emerald-500 rounded-xl font-bold font-mono text-sm text-foreground transition-all"
+                                        value={profileData.farm.latitude !== null && profileData.farm.latitude !== undefined ? profileData.farm.latitude : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setProfileData({
+                                                ...profileData,
+                                                farm: { ...profileData.farm, latitude: val === '' ? '' : parseFloat(val) }
+                                            });
+                                        }}
+                                        placeholder="17.498216"
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Longitude</Label>
-                                <Input
-                                    className="h-12 bg-secondary/30 border-emerald-500/10 rounded-xl font-bold opacity-70"
-                                    value={profileData.farm.longitude?.toFixed(6) || ''}
-                                    readOnly
-                                />
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Longitude</Label>
+                                    <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Editable</span>
+                                </div>
+                                <div className="relative">
+                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/70 rotate-90" />
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        className="pl-12 h-12 bg-secondary/30 border-emerald-500/20 focus:border-emerald-500 rounded-xl font-bold font-mono text-sm text-foreground transition-all"
+                                        value={profileData.farm.longitude !== null && profileData.farm.longitude !== undefined ? profileData.farm.longitude : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setProfileData({
+                                                ...profileData,
+                                                farm: { ...profileData.farm, longitude: val === '' ? '' : parseFloat(val) }
+                                            });
+                                        }}
+                                        placeholder="78.388956"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Farm Location Map</Label>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg h-8 px-3 text-[11px] font-bold border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/5"
-                                onClick={() => setShowMap(!showMap)}
-                            >
-                                <MapIcon size={14} className="mr-1" />
-                                {showMap ? 'Hide Map' : 'Select Location on Map'}
-                            </Button>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <Label className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Farm Location Map & Geotag</Label>
+                                <p className="text-[11px] text-muted-foreground ml-1">Click anywhere or drag the blue pin to reposition coordinates</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg h-8 px-3 text-[11px] font-bold border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10 gap-1.5"
+                                    onClick={handleGetCurrentLocation}
+                                    disabled={detectingGps}
+                                >
+                                    {detectingGps ? <Loader2 size={13} className="animate-spin" /> : <Crosshair size={13} />}
+                                    <span>Use My GPS</span>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg h-8 px-3 text-[11px] font-bold border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10 gap-1.5"
+                                    onClick={() => setShowMap(!showMap)}
+                                >
+                                    <MapIcon size={13} />
+                                    <span>{showMap ? 'Hide Map' : 'Show Map'}</span>
+                                </Button>
+                            </div>
                         </div>
 
                         <AnimatePresence>
                             {showMap && (
                                 <motion.div
                                     initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 300, opacity: 1 }}
+                                    animate={{ height: 320, opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden rounded-2xl border border-emerald-500/10"
+                                    className="overflow-hidden rounded-2xl border border-emerald-500/20 shadow-inner"
                                 >
                                     <MapContainer
-                                        center={[profileData.farm.latitude || 17.385, profileData.farm.longitude || 78.486]}
+                                        center={[profileData.farm.latitude || 17.498216, profileData.farm.longitude || 78.388956]}
                                         zoom={15}
-                                        style={{ height: '300px', width: '100%' }}
+                                        style={{ height: '320px', width: '100%' }}
                                     >
                                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                         <LocationMarker />
@@ -397,7 +497,75 @@ const ProfileSettings = ({ token, onLogout, API_BASE: propApiBase, onProfileUpda
                 </CardFooter>
             </Card>
 
-            {/* Section 3: Security */}
+            {/* Section 3: Appearance & Theme */}
+            <Card className="rounded-[2rem] border-primary/10 shadow-xl shadow-primary/5 bg-card/50 backdrop-blur-xl overflow-hidden">
+                <CardHeader className="p-8 pb-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Palette size={20} className="text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>Appearance & Theme</CardTitle>
+                            <CardDescription>Customize the interface theme to match your working conditions (sunlight or night monitoring)</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Light Mode Option */}
+                        <div
+                            onClick={() => setTheme('light')}
+                            className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex flex-col gap-3 group relative ${
+                                !isDark
+                                    ? 'border-amber-500 bg-amber-500/5 shadow-md shadow-amber-500/10'
+                                    : 'border-border/80 bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                                    <Sun size={20} />
+                                </div>
+                                {!isDark && (
+                                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm">
+                                        <Check size={14} className="stroke-[3]" />
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-base text-foreground">Light Mode</h4>
+                                <p className="text-xs text-muted-foreground mt-1">High-contrast bright display optimized for outdoor field daylight viewing.</p>
+                            </div>
+                        </div>
+
+                        {/* Dark Mode Option */}
+                        <div
+                            onClick={() => setTheme('dark')}
+                            className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex flex-col gap-3 group relative ${
+                                isDark
+                                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+                                    : 'border-border/80 bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <Moon size={20} />
+                                </div>
+                                {isDark && (
+                                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
+                                        <Check size={14} className="stroke-[3]" />
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-base text-foreground">Dark Mode</h4>
+                                <p className="text-xs text-muted-foreground mt-1">Sleek dark interface reduced eye strain and power saving during night operations.</p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Section 4: Security */}
             <Card className="rounded-[2rem] border-red-500/10 shadow-xl shadow-red-500/5 bg-card/50 backdrop-blur-xl overflow-hidden">
                 <CardHeader className="p-8 pb-0">
                     <div className="flex items-center gap-3">

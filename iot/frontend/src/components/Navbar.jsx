@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X, Languages, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "./ThemeToggle";
 
 const languageLabels = {
   English: "English",
@@ -70,6 +71,7 @@ const Navbar = ({ onLogin, onGetStarted, currentLang, changeLanguage, t }) => {
 
         <div className="hidden md:flex items-center gap-3">
           <LanguageSelector isMobile={false} />
+          <ThemeToggle variant="button" />
           <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={onLogin}>
             {t('login')}
           </Button>
@@ -77,12 +79,15 @@ const Navbar = ({ onLogin, onGetStarted, currentLang, changeLanguage, t }) => {
         </div>
 
         {/* Mobile toggle */}
-        <button
-          className="md:hidden text-foreground"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="md:hidden flex items-center gap-2">
+          <ThemeToggle variant="button" className="w-9 h-9" />
+          <button
+            className="text-foreground p-1"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -110,3 +115,4 @@ const Navbar = ({ onLogin, onGetStarted, currentLang, changeLanguage, t }) => {
 };
 
 export default Navbar;
+

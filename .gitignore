@@ -43,3 +43,5 @@ Thumbs.db
 # Local Cache & Tool Data
 .freebuff/
 test_result.json
+satellite_cache/
+iot/backend/static/satellite_cache/

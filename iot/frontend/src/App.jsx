@@ -19,6 +19,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import LandingPage from './components/LandingPage';
 import ProfileSettings from './components/ProfileSettings';
+import ThemeToggle from './components/ThemeToggle';
+import FieldPolygonDrawer from './components/FieldPolygonDrawer';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from 'sonner';
 
@@ -389,7 +391,6 @@ const translations = {
     water_needed_in: "आपके खेत को पानी की आवश्यकता होगी",
     hours: "घंटे",
     active: "सिस्टम सक्रिय है",
-    active: "सिस्टम सक्रिय है",
     standby: "सिस्टम स्टैंडबाय पर है",
     state: "स्थिति",
     partlyCloudy: "आंशिक रूप से बादल",
@@ -404,7 +405,6 @@ const translations = {
     humidity: "नमी",
     waterUsed: "उपयोग किया गया पानी",
     today: "आज",
-    imp_tag: "प्रभाव",
     imp_tag: "प्रभाव",
     imp_title: "एग्रीमेट क्यों महत्वपूर्ण है",
     imp_desc: "पानी का उपयोग कम करें, फसल उत्पादकता बढ़ाएँ, फसल तनाव रोकें और डेटा-संचालित खेती को सक्षम करें।",
@@ -2368,6 +2368,8 @@ const App = () => {
     sensor_data: data?.sensor_data || mockData.sensor_data, // Ensure real data takes priority
     farmer_name: profile?.profile?.name || data?.farmer_name || mockData.farmer_name,
     farmer_village: profile?.farm?.village || data?.farmer_village || mockData.farmer_village,
+    latitude: profile?.farm?.latitude ?? data?.latitude ?? mockData.latitude ?? 17.515397,
+    longitude: profile?.farm?.longitude ?? data?.longitude ?? mockData.longitude ?? 78.3817156,
     profile_photo: profile?.profile?.profile_photo || null,
   };
 
@@ -3103,8 +3105,8 @@ const App = () => {
   const renderSatellite = () => (
     <div className="space-y-10">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Satellite Intelligence</h2>
-        <p className="text-muted-foreground font-medium">Sentinel-2 Orbital Analytics for {currentStatus.farmer_village}</p>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Satellite Intelligence & Orders</h2>
+        <p className="text-muted-foreground font-medium">Planet Labs Orders API (3m HD) + Sentinel-2 Analytics for {currentStatus.farmer_village}</p>
       </motion.div>
 
       {satelliteAlert && (
@@ -3118,139 +3120,56 @@ const App = () => {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-xl"
-        >
-          <div className="p-8 border-b border-border flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <Satellite className="text-primary" /> {satMode === 'ndvi' ? 'Crop Health Heatmap' : 'Natural Field View'}
-            </h3>
-            <div className="flex items-center gap-4">
-              <div className="flex bg-secondary/50 p-1 rounded-xl border border-border">
-                <button
-                  onClick={() => setSatMode('ndvi')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${satMode === 'ndvi' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Health Map
-                </button>
-                <button
-                  onClick={() => setSatMode('rgb')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${satMode === 'rgb' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Natural Photo
-                </button>
-              </div>
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/10 uppercase tracking-widest">
-                Last Pass: {satelliteData?.image_date || "--"}
-              </div>
-            </div>
+      {/* 1. Interactive Field Polygon Drawer with Planet Orders API execution */}
+      <FieldPolygonDrawer
+        token={token}
+        API_BASE={API_BASE}
+        userLat={currentStatus.latitude || 17.515397}
+        userLon={currentStatus.longitude || 78.3817156}
+        cropType={currentStatus.field_info?.crop || 'Rice'}
+        onOrderProcessed={(res) => {
+          if (res?.metrics) {
+            setSatelliteData({
+              ndvi_value: res.metrics.mean_ndvi,
+              health_status: res.metrics.health_status,
+              status: res.metrics.health_status,
+              image_date: res.scene?.acquired ? res.scene.acquired.split('T')[0] : new Date().toISOString().split('T')[0],
+              source: 'Planet Labs Orders API v2 (3m HD)'
+            });
+          }
+        }}
+      />
+
+      {/* 2. Historical NDVI Growth Trend */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card border border-border p-8 rounded-[2.5rem] shadow-xl"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Longitudinal Health</div>
+            <h3 className="text-lg font-bold text-foreground">Multi-Week Field NDVI Growth Trajectory</h3>
           </div>
-
-          <div className="relative h-[500px] w-full bg-secondary/20">
-            {healthMapUrls === 'error' ? (
-              <div className="h-full w-full flex items-center justify-center flex-col gap-4 p-8 text-center">
-                <AlertTriangle className="text-yellow-500" size={40} />
-                <p className="text-muted-foreground font-bold">Cloud Cover Interference</p>
-                <p className="text-xs text-muted-foreground max-w-xs">
-                  We couldn't get a clear orbital view of your farm from Sentinel-2 right now. This usually happens during heavy cloud cover.
-                </p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-4 px-6 py-2 bg-secondary rounded-xl text-xs font-bold hover:bg-secondary/80"
-                >
-                  Retry Orbital Pass
-                </button>
-              </div>
-            ) : healthMapUrls && healthMapUrls !== 'error' ? (
-              <div className="h-full w-full relative group">
-                <img
-                  src={satMode === 'ndvi' ? healthMapUrls.ndvi_viz_url : healthMapUrls.true_color_url}
-                  className="w-full h-full object-cover transition-opacity duration-500"
-                  alt="Satellite View"
-                />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                  <div className="p-4 bg-card/90 backdrop-blur rounded-2xl border border-white/10 text-xs font-bold">
-                    {satMode === 'ndvi' ? 'Spectral Analysis (Sentinel-2)' : 'True Color RGB (Sentinel-2)'}
-                  </div>
-                </div>
-
-                {/* Map Legend - Only show in NDVI mode */}
-                {satMode === 'ndvi' && (
-                  <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md p-4 rounded-xl border border-white/10 flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
-                      <div className="w-3 h-3 rounded-full bg-[#00ff00]" /> Healthy
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
-                      <div className="w-3 h-3 rounded-full bg-[#ffff00]" /> Moderate
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-wider">
-                      <div className="w-3 h-3 rounded-full bg-[#ff0000]" /> Stressed
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="h-full w-full flex items-center justify-center flex-col gap-4">
-                <Loader2 className="animate-spin text-primary" size={40} />
-                <p className="text-muted-foreground font-medium text-center">
-                  Requesting spectral data from <br />Google Earth Engine...
-                </p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        <div className="space-y-8 flex flex-col">
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-card border border-border p-8 rounded-[2.5rem] flex-1"
-          >
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">NDVI Index</div>
-            <div className="text-6xl font-black text-primary mb-4">
-              {satelliteData?.ndvi_value || "0.00"}
-            </div>
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-extrabold mb-6 uppercase tracking-wider ${satelliteData?.ndvi_value > 0.6 ? 'bg-green-500/10 text-green-500' :
-              satelliteData?.ndvi_value > 0.3 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
-              }`}>
-              {satelliteData?.status || "Analyzing..."}
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-              {satelliteData?.ndvi_value > 0.6
-                ? "Highly active photosynthesis detected. Vegetation is robust and healthy."
-                : satelliteData?.ndvi_value > 0.3
-                  ? "Moderate vegetation detected. Normal growth patterns for this season."
-                  : "LOW VEGETATION. Potential crop stress or water deficit detected via spectral signature."}
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card border border-border p-8 rounded-[2.5rem] h-[300px]"
-          >
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-6">Growth Trend</div>
-            <div className="h-[180px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ndviTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="week" stroke="#64748b" fontSize={10} fontWeight="bold" />
-                  <YAxis domain={[0, 1]} stroke="#64748b" fontSize={10} fontWeight="bold" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem' }}
-                    itemStyle={{ color: '#eab308' }}
-                  />
-                  <Line type="monotone" dataKey="ndvi" stroke="#eab308" strokeWidth={4} dot={{ r: 4, fill: '#eab308' }} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
+          <span className="text-xs font-mono text-primary bg-primary/10 px-3 py-1 rounded-full font-bold border border-primary/20">
+            Sentinel-2 + PlanetScope Fused
+          </span>
         </div>
-      </div>
+        <div className="h-[220px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={ndviTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.25} />
+              <XAxis dataKey="week" stroke="#64748b" fontSize={11} fontWeight="bold" />
+              <YAxis domain={[0, 1]} stroke="#64748b" fontSize={11} fontWeight="bold" />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem', padding: '10px 14px' }}
+                itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+              />
+              <Line type="monotone" dataKey="ndvi" stroke="#10b981" strokeWidth={4} dot={{ r: 5, fill: '#10b981' }} activeDot={{ r: 8 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
     </div>
   );
 
@@ -3336,6 +3255,8 @@ const App = () => {
               </div>
             </div>
           </div>
+
+          <ThemeToggle variant="button" />
 
           <div className="h-6 w-px bg-border hidden sm:block mx-1" />
 

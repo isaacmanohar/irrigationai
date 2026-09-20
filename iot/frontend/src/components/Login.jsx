@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ThemeToggle from './ThemeToggle';
 
 const Login = ({ onLogin, onSwitchToRegister, t }) => {
     const [username, setUsername] = useState('');
@@ -34,6 +35,11 @@ const Login = ({ onLogin, onSwitchToRegister, t }) => {
 
     return (
         <div className="relative min-h-screen flex items-center justify-center p-6 bg-background overflow-hidden font-sans">
+            {/* Top Right Theme Toggle */}
+            <div className="absolute top-6 right-6 z-20">
+                <ThemeToggle variant="pill" showLabel={true} />
+            </div>
+
             {/* Background decorative elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />

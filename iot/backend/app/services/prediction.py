@@ -83,18 +83,18 @@ class IrrigationPredictor:
                            'Crop_Growth_Stage', 'Season', 'NDVI', 'Previous_Irrigation_mm']
         
         mapped_features = {
-            'Soil_Type': features.get('soil_type', 1),
-            'Soil_Moisture': features.get('soil_moisture', 40),
-            'Temperature_C': features.get('temperature', 25),
-            'Humidity': features.get('humidity', 60),
-            'Rainfall_mm': features.get('rainfall_mm', 0),
-            'Wind_Speed_kmh': features.get('wind_speed_kmh', 10),
-            'Sunlight_Hours': features.get('sunlight_hours', 8),
-            'Crop_Type': features.get('crop_type', 1),
-            'Crop_Growth_Stage': features.get('growth_stage', 1),
-            'Season': features.get('season', 1),
-            'NDVI': features.get('ndvi', 0.5),
-            'Previous_Irrigation_mm': features.get('prev_irrigation_mm', 10)
+            'Soil_Type': features.get('Soil_Type', features.get('soil_type', 1)),
+            'Soil_Moisture': features.get('Soil_Moisture', features.get('soil_moisture', 40)),
+            'Temperature_C': features.get('Temperature_C', features.get('temperature', 25)),
+            'Humidity': features.get('Humidity', features.get('humidity', 60)),
+            'Rainfall_mm': features.get('Rainfall_mm', features.get('rainfall_mm', 0)),
+            'Wind_Speed_kmh': features.get('Wind_Speed_kmh', features.get('wind_speed_kmh', 10)),
+            'Sunlight_Hours': features.get('Sunlight_Hours', features.get('sunlight_hours', 8)),
+            'Crop_Type': features.get('Crop_Type', features.get('crop_type', 1)),
+            'Crop_Growth_Stage': features.get('Crop_Growth_Stage', features.get('growth_stage', 1)),
+            'Season': features.get('Season', features.get('season', 1)),
+            'NDVI': features.get('NDVI', features.get('ndvi', 0.5)),
+            'Previous_Irrigation_mm': features.get('Previous_Irrigation_mm', features.get('prev_irrigation_mm', 10))
         }
         
         return pd.DataFrame([mapped_features])[expected_features], mapped_features

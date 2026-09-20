@@ -3,6 +3,9 @@ import logging
 import os
 import asyncio
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -55,21 +58,37 @@ class SatelliteService:
             import ee
             point = ee.Geometry.Point([lon, lat])
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=days_back)
+            start_date = end_date - timedelta(days=max(days_back, 90))
             
             sentinel2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
                         .filterBounds(point)
                         .filterDate(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-                        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
+                        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 40))
                         .sort('system:time_start', False))
             
             if sentinel2.size().getInfo() == 0:
-                return self._get_simulated_ndvi(lat, lon)
+                # Fallback to latest available image in collection without date bounds
+                sentinel2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+                            .filterBounds(point)
+                            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 50))
+                            .sort('system:time_start', False)
+                            .limit(5))
+                if sentinel2.size().getInfo() == 0:
+                    return self._get_simulated_ndvi(lat, lon)
             
             latest_image = sentinel2.first()
             # NDVI = (B8 - B4) / (B8 + B4)
             ndvi = latest_image.normalizedDifference(['B8', 'B4']).rename('NDVI')
-            ndvi_value = ndvi.sample(point, 30).first().get('NDVI').getInfo()
+            
+            # Use reduceRegion for robust pixel extraction
+            stats = ndvi.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(30),
+                scale=10,
+                maxPixels=1e6
+            ).getInfo()
+            
+            ndvi_value = stats.get('NDVI') if stats and stats.get('NDVI') is not None else 0.45
             image_date = ee.Date(latest_image.get('system:time_start')).format('YYYY-MM-dd').getInfo()
             
             health_status, stress_alert = self._interpret_ndvi(ndvi_value)
@@ -79,13 +98,13 @@ class SatelliteService:
                 "health_status": health_status,
                 "stress_alert": stress_alert,
                 "image_date": image_date,
-                "source": "Sentinel-2"
+                "source": "Sentinel-2 (Google Earth Engine)"
             }
         except Exception as e:
             logger.error(f"Error fetching NDVI from GEE: {e}")
             return self._get_simulated_ndvi(lat, lon)
 
-    async def get_satellite_image(self, lat: float, lon: float, days_back: int = 60):
+    async def get_satellite_image(self, lat: float, lon: float, days_back: int = 90):
         """Returns True Color, False Color, and NDVI thumbnail URLs"""
         if self.gee_available:
             return await asyncio.get_event_loop().run_in_executor(
@@ -101,16 +120,22 @@ class SatelliteService:
             region = point.buffer(1000).bounds() # 1km radius
 
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=days_back)
+            start_date = end_date - timedelta(days=max(days_back, 90))
 
             collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
                          .filterBounds(region)
                          .filterDate(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-                         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 15))
+                         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 40))
                          .sort('system:time_start', False))
 
             if collection.size().getInfo() == 0:
-                return self._get_simulated_image(lat, lon)
+                collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+                             .filterBounds(region)
+                             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 50))
+                             .sort('system:time_start', False)
+                             .limit(5))
+                if collection.size().getInfo() == 0:
+                    return self._get_simulated_image(lat, lon)
 
             latest = collection.first()
             image_date = ee.Date(latest.get('system:time_start')).format('YYYY-MM-dd').getInfo()
@@ -130,15 +155,22 @@ class SatelliteService:
             })
 
             # NDVI URL with Palette
-            ndvi_image = latest.normalizedDifference(['B8', 'B4'])
+            ndvi_image = latest.normalizedDifference(['B8', 'B4']).rename('NDVI')
             ndvi_url = ndvi_image.getThumbURL({
                 'min': 0, 'max': 1,
                 'palette': ['#ff0000', '#ffff00', '#00ff00'], # Red, Yellow, Green as requested
                 'region': region, 'dimensions': 512, 'format': 'png'
             })
             
-            # Latest point value
-            ndvi_value = ndvi_image.sample(point, 30).first().get('nd').getInfo()
+            # Latest point value via reduceRegion
+            stats = ndvi_image.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=point.buffer(30),
+                scale=10,
+                maxPixels=1e6
+            ).getInfo()
+            
+            ndvi_value = stats.get('NDVI') if stats and stats.get('NDVI') is not None else 0.45
             health_status, stress_alert = self._interpret_ndvi(ndvi_value)
 
             return {
@@ -150,7 +182,7 @@ class SatelliteService:
                 "stress_alert": stress_alert,
                 "image_date": image_date,
                 "lat": lat, "lon": lon,
-                "source": "Sentinel-2 (Live)"
+                "source": "Sentinel-2 (Google Earth Engine Live)"
             }
         except Exception as e:
             logger.error(f"Error fetching images from GEE: {e}")

@@ -37,16 +37,30 @@ def generate_synthetic_data(samples=2000):
         'Previous_Irrigation_mm': prev_irrigation
     })
     
-    # Target 1: Irrigation Need (0/1)
-    # Higher score means more need
-    score = (100 - soil_moisture) * 0.4 + temp * 0.2 + sunlight * 0.1 + wind_speed * 0.05 - rainfall * 0.5 - ndvi * 10 - prev_irrigation * 0.1
-    data['Irrigation_Needed'] = (score > 35).astype(int)
+    # Target 1 & 2: Agronomically physics-based decision logic
+    # Soil moisture target threshold: 65% capacity
+    moisture_deficit = np.maximum(0, 60.0 - soil_moisture)
+    
+    # Evapotranspiration (ETo) factor based on Temp, Humidity, Wind & Sunlight
+    eto_factor = 1.0 + (temp - 25.0) * 0.02 + (sunlight - 8.0) * 0.03 + (wind_speed - 10.0) * 0.01 - (humidity - 60.0) * 0.008
+    eto_factor = np.clip(eto_factor, 0.6, 1.8)
+    
+    # Net crop water requirement in mm
+    net_req = moisture_deficit * 0.5 * eto_factor + (1.0 - ndvi) * 5.0 - rainfall * 0.8 - prev_irrigation * 0.1
+    net_req = np.maximum(0, net_req)
+    
+    # Classification: Needs irrigation if net requirement > 3.0 mm and soil moisture < 50%
+    data['Irrigation_Needed'] = ((soil_moisture < 45.0) | ((soil_moisture < 55.0) & (net_req > 5.0))).astype(int)
+    
+    # Override: Heavy rain (>= 8mm) or wet soil (>= 60%) suppresses irrigation
+    data.loc[(data['Rainfall_mm'] >= 8.0) | (data['Soil_Moisture'] >= 60.0), 'Irrigation_Needed'] = 0
     
     # Target 2: Water Requirement (mm)
-    # Proportional to need but clipped
-    data['Water_Requirement'] = np.where(data['Irrigation_Needed'] == 1, 
-                                        np.clip(score * 0.5, 5, 50), 
-                                        0)
+    data['Water_Requirement'] = np.where(
+        data['Irrigation_Needed'] == 1,
+        np.clip(net_req, 5.0, 50.0),
+        0.0
+    )
     
     return data
 
